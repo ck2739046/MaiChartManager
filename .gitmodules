@@ -1,15 +1,15 @@
 [submodule "SimaiSharp"]
 	path = SimaiSharp
-	url = git@github.com:clansty/SimaiSharp.git
+	url = https://github.com/clansty/SimaiSharp.git
 [submodule "MaiLib"]
 	path = MaiLib
-	url = git@github.com:clansty/MaiLib.git
+	url = https://github.com/clansty/MaiLib.git
 [submodule "SonicAudioTools"]
 	path = SonicAudioTools
-	url = git@github.com:clansty/SonicAudioTools.git
+	url = https://github.com/clansty/SonicAudioTools.git
 [submodule "XV2-Tools"]
 	path = XV2-Tools
-	url = git@github.com:clansty/XV2-Tools.git
+	url = https://github.com/clansty/XV2-Tools.git
 [submodule "AquaMai"]
 	path = AquaMai
-	url = git@github.com:MewoLab/AquaMai.git
+	url = https://github.com/MewoLab/AquaMai.git
