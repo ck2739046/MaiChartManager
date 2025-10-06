@@ -29,17 +29,18 @@ namespace AudioConverter
                     s.CopyTo(fs);
                     helperCreated = true;
                 }
-                
+
 
                 if (args.Length == 0)
                 {
-                    Console.WriteLine("音频转换器 - 将音频文件转换为ACB/AWB格式");
+                    Console.WriteLine("音频转换器 - 双向音频格式转换工具");
                     Console.WriteLine("使用方法:");
                     Console.WriteLine("  1. 将音频文件拖拽到此程序图标上");
-                    Console.WriteLine("  2. 或者通过命令行: AudioConverter.exe <音频文件路径>");
+                    Console.WriteLine("  2. 或者通过命令行: AudioConverter.exe <文件路径>");
                     Console.WriteLine("");
-                    Console.WriteLine("支持格式: MP3, OGG, WAV, WMA, AAC, MP4");
-                    Console.WriteLine("输出文件: 在输入文件相同目录生成 .acb 和 .awb 文件");
+                    Console.WriteLine("支持的转换:");
+                    Console.WriteLine("  • 音频 → ACB/AWB: MP3, OGG, WAV, WMA, AAC, MP4");
+                    Console.WriteLine("  • ACB/AWB → MP3: 需要 ACB 和 AWB 文件配对");
                     Console.WriteLine("");
                     Console.WriteLine("按任意键退出...");
                     Console.ReadKey();
@@ -51,6 +52,18 @@ namespace AudioConverter
                 if (!File.Exists(inputPath))
                 {
                     Console.WriteLine($"错误: 文件不存在 - {inputPath}");
+                    Console.WriteLine("");
+                    Console.WriteLine("按任意键退出...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                string extension = Path.GetExtension(inputPath).ToLowerInvariant();
+
+                // 检查是否是 ACB 或 AWB 文件
+                if (extension == ".acb" || extension == ".awb")
+                {
+                    ProcessAcbAwbToMp3(inputPath);
                     return;
                 }
 
@@ -63,10 +76,10 @@ namespace AudioConverter
                         Console.WriteLine("检测到MP4视频文件，正在提取音频轨道...");
                         string fileNameWithoutExt1 = Path.GetFileNameWithoutExtension(inputPath);
                         tempAudioFile = Path.Combine(exeDir, fileNameWithoutExt1 + "_temp.wav");
-                        
+
                         Audio.ExtractAudioFromMp4(inputPath, tempAudioFile);
                         Console.WriteLine("音频轨道提取完成");
-                        
+
                         // 使用临时音频文件作为输入
                         inputPath = tempAudioFile;
                     }
@@ -90,6 +103,9 @@ namespace AudioConverter
                 {
                     Console.WriteLine($"转换失败: {ex.Message}");
                     Console.WriteLine($"详细错误: {ex}");
+                    Console.WriteLine("");
+                    Console.WriteLine("按任意键退出...");
+                    Console.ReadKey();
                 }
                 finally
                 {
@@ -118,15 +134,87 @@ namespace AudioConverter
                 catch { /* ignore cleanup errors */ }
             }
         }
+
+        /// <summary>
+        /// 处理 ACB/AWB 转 MP3 的流程
+        /// </summary>
+        private static void ProcessAcbAwbToMp3(string inputPath)
+        {
+            try
+            {
+                string directory = Path.GetDirectoryName(inputPath);
+                string fileNameWithoutExt = Path.GetFileNameWithoutExtension(inputPath);
+                string extension = Path.GetExtension(inputPath).ToLowerInvariant();
+
+                string acbPath;
+                string awbPath;
+
+                // 根据输入文件类型确定 ACB 和 AWB 路径
+                if (extension == ".acb")
+                {
+                    acbPath = inputPath;
+                    awbPath = Path.Combine(directory, fileNameWithoutExt + ".awb");
+                }
+                else // .awb
+                {
+                    awbPath = inputPath;
+                    acbPath = Path.Combine(directory, fileNameWithoutExt + ".acb");
+                }
+
+                // 检查配对文件是否存在
+                if (!File.Exists(acbPath))
+                {
+                    Console.WriteLine($"错误: 找不到配对的 ACB 文件: {acbPath}");
+                    Console.WriteLine("ACB 和 AWB 文件必须在同一目录且同名");
+                    Console.WriteLine("");
+                    Console.WriteLine("按任意键退出...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                if (!File.Exists(awbPath))
+                {
+                    Console.WriteLine($"错误: 找不到配对的 AWB 文件: {awbPath}");
+                    Console.WriteLine("ACB 和 AWB 文件必须在同一目录且同名");
+                    Console.WriteLine("");
+                    Console.WriteLine("按任意键退出...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                Console.WriteLine($"找到配对文件:");
+                Console.WriteLine($"  ACB: {Path.GetFileName(acbPath)}");
+                Console.WriteLine($"  AWB: {Path.GetFileName(awbPath)}");
+                Console.WriteLine("");
+                Console.WriteLine("正在转换 ACB/AWB 到 MP3...");
+
+                // 转换 ACB 到 WAV
+                byte[] wavData = Audio.AcbToWav(acbPath);
+
+                // 生成 MP3 输出路径
+                string mp3Path = Path.Combine(directory, fileNameWithoutExt + ".mp3");
+
+                // 将 WAV 数据转换为 MP3
+                Audio.ConvertWavBytesToMp3(wavData, mp3Path);
+
+                Console.WriteLine("");
+                Console.WriteLine($"转换完成!");
+                Console.WriteLine($"输出文件: {mp3Path}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"转换失败: {ex.Message}");
+                Console.WriteLine($"详细错误: {ex}");
+                Console.WriteLine("");
+                Console.WriteLine("按任意键退出...");
+                Console.ReadKey();
+            }
+        }
     }
 
     public static class Audio
     {
-        /// <summary>
-        /// 从MP4视频文件中提取音频轨道并保存为WAV文件
-        /// </summary>
-        /// <param name="mp4Path">MP4视频文件路径</param>
-        /// <param name="outputWavPath">输出的WAV文件路径</param>
+        // 从MP4视频文件中提取音频轨道并保存为WAV文件
         public static void ExtractAudioFromMp4(string mp4Path, string outputWavPath)
         {
             using (var reader = new MediaFoundationReader(mp4Path))
@@ -208,12 +296,12 @@ namespace AudioConverter
             switch (padding)
             {
                 case > 0:
-                {
-                    var sp = new SilenceProvider(reader.WaveFormat);
-                    var silence = sp.ToSampleProvider().Take(TimeSpan.FromSeconds(padding));
-                    sample = silence.FollowedBy(sample);
-                    break;
-                }
+                    {
+                        var sp = new SilenceProvider(reader.WaveFormat);
+                        var silence = sp.ToSampleProvider().Take(TimeSpan.FromSeconds(padding));
+                        sample = silence.FollowedBy(sample);
+                        break;
+                    }
                 case < 0:
                     sample = sample.Skip(TimeSpan.FromSeconds(-padding));
                     break;
@@ -274,6 +362,18 @@ namespace AudioConverter
             var entry = acb.GetAfs2Entry(wave.AwbId);
             using MemoryStream stream = new MemoryStream(entry.bytes);
             return ConvertStream.ConvertFile(new Options(), stream, GetFileType(wave.EncodeType), FileType.Wave);
+        }
+
+        // 将 WAV 字节数据转换为 MP3 文件
+        public static void ConvertWavBytesToMp3(byte[] wavData, string mp3Path)
+        {
+            // 将 WAV 字节数据写入内存流
+            using var wavStream = new MemoryStream(wavData);
+            using var reader = new WaveFileReader(wavStream);
+
+            // 创建 MP3 文件并编码
+            using var writer = new NAudio.Lame.LameMP3FileWriter(mp3Path, reader.WaveFormat, 256);
+            reader.CopyTo(writer);
         }
     }
 }
