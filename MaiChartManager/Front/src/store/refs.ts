@@ -1,10 +1,10 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { AppVersionResult, ConfigDto, GameModInfo, GenreXml, GetAssetsDirsResult, MusicXmlWithABJacket, VersionXml } from "@/client/apiGen";
 import api, { aquaMaiVersionConfig } from "@/client/api";
 import { captureException } from "@sentry/vue";
 import posthog from "posthog-js";
-import { useStorage } from "@vueuse/core";
-import deniedOgg from "@/assets/Denied.ogg";
+import { useStorage, useWindowFocus, whenever } from "@vueuse/core";
+import { locale } from "@/locales";
 
 export const error = ref();
 export const errorId = ref<string>();
@@ -12,7 +12,7 @@ export const errorContext = ref<string>();
 
 export const globalCapture = async (err: any, context: string) => {
   console.log(err)
-  if (err instanceof Response) {
+  if (err instanceof Response && !(err as any).error) {
     if (!err.bodyUsed) {
       // @ts-ignore
       const errText = err.error = await err.text();
@@ -38,7 +38,6 @@ export const globalCapture = async (err: any, context: string) => {
     errorId: errorId.value,
     message: error.value?.error?.message || error.value?.error?.toString() || error.value?.message || error.value?.toString(),
   })
-  new Audio(deniedOgg).play();
 }
 
 export const showNeedPurchaseDialog = ref(false);
@@ -54,11 +53,32 @@ export const modInfo = ref<GameModInfo>();
 
 export const musicList = computed(() => musicListAll.value.filter(m => m.assetDir === selectedADir.value));
 export const selectedMusic = computed(() => musicList.value.find(m => m.id === selectMusicId.value));
+export const selectedLevel = ref(0);
 
 export const aquaMaiConfig = ref<ConfigDto>()
 export const modUpdateInfo = ref<Awaited<ReturnType<typeof aquaMaiVersionConfig.getGetConfig>>['data']>([{
   type: 'builtin',
 }])
+
+export const saveMusicIfNeeded = async (id: number) => {
+  if (!id) return;
+  const music = musicListAll.value.find(m => m.id === id);
+  if (!music?.modified) return;
+  await api.SaveMusic(id, selectedADir.value);
+  await updateMusicList();
+}
+
+const focused = useWindowFocus()
+
+whenever(() => !focused.value, () => {
+  saveMusicIfNeeded(selectMusicId.value);
+})
+
+watch(selectMusicId, async (n, o) => {
+  if (n === o) return;
+  if (!o) return;
+  await saveMusicIfNeeded(o);
+})
 
 export const updateGenreList = async () => {
   const response = await api.GetAllGenres();
@@ -80,6 +100,7 @@ export const updateAssetDirs = async () => {
 
 export const updateVersion = async () => {
   version.value = (await api.GetAppVersion()).data;
+  locale.value = version.value?.locale || 'en';
 }
 
 export const updateModInfo = async () => {
@@ -112,11 +133,15 @@ export const updateModUpdateInfo = async () => {
 
 
 export const updateAll = async () => Promise.all([
+  updateVersion(),
   updateGenreList(),
   updateAddVersionList(),
   updateAssetDirs(),
-  updateVersion(),
   updateMusicList(),
   updateModInfo(),
   updateModUpdateInfo(),
 ])
+
+export const gameVersion = computed(() => version.value?.gameVersion || 45)
+// 从1.60起，b15算最近两个版本
+export const b15ver = computed(() => 20000 + (gameVersion.value >= 60 ? gameVersion.value - 5 : gameVersion.value) * 100);

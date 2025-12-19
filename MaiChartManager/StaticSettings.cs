@@ -1,7 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using System.Xml;
 using AquaMai.Config.Interfaces;
-using MaiChartManager.Controllers;
 using MaiChartManager.Models;
 using MaiChartManager.Utils;
 
@@ -22,6 +21,7 @@ public partial class StaticSettings
     public static List<string> StartupErrorsList { get; } = new();
 
     public static Config Config { get; set; } = new();
+    public static string CurrentLocale { get; set; } = "zh";
 
     private readonly ILogger<StaticSettings> _logger;
 
@@ -33,7 +33,7 @@ public partial class StaticSettings
         {
             if (string.IsNullOrEmpty(GamePath))
             {
-                throw new ArgumentException("未指定游戏目录");
+                throw new ArgumentException(Locale.GameDirNotSpecified);
             }
 
             GetGameVersion();
@@ -43,7 +43,7 @@ public partial class StaticSettings
         {
             _logger.LogError(e, "初始化数据目录时出错");
             SentrySdk.CaptureException(e);
-            MessageBox.Show(e.Message, "初始化数据目录时出错", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(e.Message, Locale.InitDataDirError, MessageBoxButtons.OK, MessageBoxIcon.Error);
             Application.Exit();
         }
     }
@@ -108,7 +108,7 @@ public partial class StaticSettings
                 {
                     _logger.LogError(ex, "加载乐曲数据 {SubDir} 失败", subDir);
                     SentrySdk.CaptureException(ex);
-                    StartupErrorsList.Add($"加载乐曲数据 {subDir} 失败: {ex.Message}");
+                    StartupErrorsList.Add(string.Format(Locale.LoadMusicDataFailed, subDir, ex.Message));
                 }
             }
         }
@@ -144,7 +144,7 @@ public partial class StaticSettings
                 {
                     _logger.LogError(ex, "加载分类数据 {SubDir} 失败", genreDir);
                     SentrySdk.CaptureException(ex);
-                    StartupErrorsList.Add($"加载分类数据 {genreDir} 失败: {ex.Message}");
+                    StartupErrorsList.Add(string.Format(Locale.LoadGenreDataFailed, genreDir, ex.Message));
                 }
             }
         }
@@ -179,7 +179,7 @@ public partial class StaticSettings
                 {
                     _logger.LogError(ex, "加载版本数据 {SubDir} 失败", versionDir);
                     SentrySdk.CaptureException(ex);
-                    StartupErrorsList.Add($"加载版本数据 {versionDir} 失败: {ex.Message}");
+                    StartupErrorsList.Add(string.Format(Locale.LoadVersionDataFailed, versionDir, ex.Message));
                 }
             }
         }
@@ -201,7 +201,7 @@ public partial class StaticSettings
                 if (!int.TryParse(idStr, out var id)) continue;
                 if (Path.GetExtension(jacketFile).ToLowerInvariant() == ".ab")
                     AssetBundleJacketMap[id] = jacketFile;
-                else if (((string[]) [".png", ".jpg", ".jpeg"]).Contains(Path.GetExtension(jacketFile).ToLowerInvariant()))
+                else if (((string[])[".png", ".jpg", ".jpeg"]).Contains(Path.GetExtension(jacketFile).ToLowerInvariant()))
                     PseudoAssetBundleJacketMap[id] = jacketFile;
             }
         }
@@ -248,14 +248,14 @@ public partial class StaticSettings
             xmlDoc.Load(Path.Combine(StreamingAssets, @"A000/DataConfig.xml"));
             if (!int.TryParse(xmlDoc.SelectSingleNode("/DataConfig/version/minor")?.InnerText, out gameVersion))
             {
-                MessageBox.Show("无法获取游戏版本号，解析数据失败", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(Locale.GameVersionNotFound, Locale.GameVersionNotFoundTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
         catch (Exception e)
         {
             _logger.LogError(e, @"无法获取游戏版本号，可能是因为 A000\DataConfig.xml 找不到或者有错误");
             SentrySdk.CaptureException(e);
-            MessageBox.Show(@"无法获取游戏版本号，可能是因为 A000\DataConfig.xml 找不到或者有错误", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(Locale.GameVersionError, Locale.GameVersionNotFoundTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
@@ -289,7 +289,7 @@ public partial class StaticSettings
         {
             try
             {
-                config = ModController.GetCurrentAquaMaiConfig();
+                config = Controllers.Mod.ConfigurationController.GetCurrentAquaMaiConfig();
             }
             catch (Exception e)
             {
@@ -299,6 +299,7 @@ public partial class StaticSettings
         }
 
         var imageAssetsDir = config.GetEntryState("GameSystem.Assets.LoadLocalImages.ImageAssetsDir");
+        // 旧版兼容
         var localAssetsDir = config.GetEntryState("GameSystem.Assets.LoadLocalImages.LocalAssetsDir");
         var movieAssetsDir = config.GetEntryState("GameSystem.Assets.MovieLoader.MovieAssetsDir");
         var skinAssetsDir = config.GetEntryState("Fancy.CustomSkins.SkinsDir");

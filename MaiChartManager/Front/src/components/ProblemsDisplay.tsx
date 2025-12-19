@@ -1,9 +1,9 @@
-import { defineComponent } from "vue";
+import { defineComponent, PropType } from "vue";
 import { NFlex, NPopover } from "naive-ui";
 
 export default defineComponent({
   props: {
-    problems: Array,
+    problems: { type: Array as PropType<string[]>, required: true },
   },
   setup(props) {
     return () => !!props.problems?.length && <NPopover trigger="hover">

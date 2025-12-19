@@ -87,6 +87,23 @@ public class ChartController(StaticSettings settings, ILogger<StaticSettings> lo
             {
                 chart.Enable = value;
             }
+            if (level == 4)
+            {
+                music.SubLockType = 0;
+            }
         }
+    }
+
+    [HttpPost]
+    public void ReplaceChart(int id, int level, IFormFile file, string assetDir)
+    {
+        var music = settings.GetMusic(id, assetDir);
+        if (music == null || file == null) return;
+        var targetChart = music.Charts[level];
+        targetChart.Path = $"{id:000000}_0{level}.ma2";
+        using var stream = System.IO.File.Open(Path.Combine(StaticSettings.StreamingAssets, assetDir, "music", $"music{id:000000}", targetChart.Path), FileMode.Create);
+        file.CopyTo(stream);
+        targetChart.Problems.Clear();
+        stream.Close();
     }
 }

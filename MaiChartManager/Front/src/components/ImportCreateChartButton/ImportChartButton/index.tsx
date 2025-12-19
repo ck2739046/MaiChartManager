@@ -12,6 +12,7 @@ import { captureException } from "@sentry/vue";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { defaultSavedOptions, defaultTempOptions, dummyMeta, IMPORT_STEP, ImportChartMessageEx, ImportMeta, MOVIE_CODEC, STEP } from "./types";
 import getNextUnusedMusicId from "@/utils/getNextUnusedMusicId";
+import { useI18n } from 'vue-i18n';
 
 const tryGetFile = async (dir: FileSystemDirectoryHandle, file: string) => {
   try {
@@ -22,10 +23,12 @@ const tryGetFile = async (dir: FileSystemDirectoryHandle, file: string) => {
   }
 }
 
+export let startProcess = (dir?: FileSystemDirectoryHandle | FileSystemDirectoryHandle[]) => { }
+
 export default defineComponent({
   setup(props) {
-    const savedOptions = useStorage('importMusicOptions', defaultSavedOptions, undefined, {mergeDefaults: true});
-    const tempOptions = ref({...defaultTempOptions});
+    const savedOptions = useStorage('importMusicOptions', defaultSavedOptions, undefined, { mergeDefaults: true });
+    const tempOptions = ref({ ...defaultTempOptions });
     const step = ref(STEP.none);
     const dialog = useDialog();
     const errors = ref<ImportChartMessageEx[]>([]);
@@ -35,10 +38,11 @@ export default defineComponent({
     const meta = ref<ImportMeta[]>([]);
     const currentProcessing = ref<ImportMeta>(dummyMeta);
     const currentMovieProgress = ref(0);
+    const { t } = useI18n();
 
     const closeModal = () => {
       step.value = STEP.none;
-      modalReject.value && modalReject.value({name: 'AbortError'});
+      modalReject.value && modalReject.value({ name: 'AbortError' });
     }
 
     const prepareFolder = async (dir: FileSystemDirectoryHandle, id: number) => {
@@ -47,32 +51,32 @@ export default defineComponent({
       const maidata = await tryGetFile(dir, 'maidata.txt');
       if (!maidata) {
         reject = true;
-        errors.value.push({level: MessageLevel.Fatal, message: '未找到 maidata.txt', name: dir.name});
+        errors.value.push({ level: MessageLevel.Fatal, message: t('chart.import.error.noMaidata'), name: dir.name });
       }
       const track = await tryGetFile(dir, 'track.mp3') || await tryGetFile(dir, 'track.wav') || await tryGetFile(dir, 'track.ogg');
       if (!track) {
         reject = true;
-        errors.value.push({level: MessageLevel.Fatal, message: '未找到音频文件', name: dir.name});
+        errors.value.push({ level: MessageLevel.Fatal, message: t('chart.import.error.noAudio'), name: dir.name });
       }
       const bg = await tryGetFile(dir, 'bg.jpg') || await tryGetFile(dir, 'bg.png') || await tryGetFile(dir, 'bg.jpeg');
       if (!bg) {
-        errors.value.push({level: MessageLevel.Warning, message: '未找到背景图片', name: dir.name});
+        errors.value.push({ level: MessageLevel.Warning, message: t('chart.import.error.noBackground'), name: dir.name });
       }
       let movie = await tryGetFile(dir, 'pv.mp4') || await tryGetFile(dir, 'mv.mp4') || await tryGetFile(dir, 'bg.mp4');
       if (movie && appVersion.value?.license !== LicenseStatus.Active) {
         movie = undefined;
-        errors.value.push({level: MessageLevel.Warning, message: '转换 PV 目前是赞助版功能，点击获取', name: dir.name, isPaid: true});
+        errors.value.push({ level: MessageLevel.Warning, message: t('chart.import.error.convertPaidFeature'), name: dir.name, isPaid: true });
       }
 
       let musicPadding = 0, first = 0, bar = 0, name = dir.name, isDx = false;
       if (maidata) {
-        const checkRet = (await api.ImportChartCheck({file: maidata})).data;
+        const checkRet = (await api.ImportChartCheck({ file: maidata })).data;
         reject = reject || !checkRet.accept;
-        errors.value.push(...(checkRet.errors || []).map(it => ({...it, name: dir.name})));
+        errors.value.push(...(checkRet.errors || []).map(it => ({ ...it, name: dir.name })));
         musicPadding = checkRet.musicPadding!;
         first = checkRet.first!;
         bar = checkRet.bar!;
-        errors.value.push({first, padding: musicPadding, name: dir.name});
+        errors.value.push({ first, padding: musicPadding, name: dir.name });
         // 为了本地的错误和远程的错误都显示本地的名称，这里在修改 name
         name = checkRet.title!;
         if (checkRet.isDx) id += 1e4;
@@ -100,9 +104,10 @@ export default defineComponent({
       const h264 = shouldUseH264();
       console.log('use h264', h264);
       body.append('h264', h264.toString());
-      body.append('file', movie);
       body.append('padding', offset.toString());
       body.append('noScale', savedOptions.value.noScale.toString());
+      body.append('yuv420p', savedOptions.value.yuv420p.toString());
+      body.append('file', movie);
       const controller = new AbortController();
       fetchEventSource(getUrl(`SetMovieApi/${selectedADir.value}/${id}`), {
         signal: controller.signal,
@@ -159,7 +164,7 @@ export default defineComponent({
           assetDir: selectedADir.value,
         })).data;
 
-        errors.value.push(...res.errors!.map(it => ({...it, name: music.name})));
+        errors.value.push(...res.errors!.map(it => ({ ...it, name: music.name })));
         if (res.fatal) {
           try {
             await api.DeleteMusic(music.id, selectedADir.value);
@@ -181,7 +186,7 @@ export default defineComponent({
           padding = -music.first;
         }
 
-        await api.SetAudio(music.id, selectedADir.value, {file: music.track, padding});
+        await api.SetAudio(music.id, selectedADir.value, { file: music.track, padding });
 
         if (music.movie && !savedOptions.value.disableBga) {
           currentMovieProgress.value = 0;
@@ -189,23 +194,23 @@ export default defineComponent({
           try {
             await uploadMovie(music.id, music.movie, padding);
           } catch (e: any) {
-            errors.value.push({level: MessageLevel.Warning, message: `视频转换失败: ${e.error?.message || e.error?.detail || e?.message || e?.toString() || '我也不知道为什么'}`, name: music.name});
+            errors.value.push({ level: MessageLevel.Warning, message: t('chart.import.error.videoConvertFailed') + `: ${e.error?.message || e.error?.detail || e?.message || e?.toString() || t('error.unknown')}`, name: music.name });
           }
         }
 
         music.importStep = IMPORT_STEP.jacket;
-        if (music.bg) await api.SetMusicJacket(music.id, selectedADir.value, {file: music.bg});
+        if (music.bg) await api.SetMusicJacket(music.id, selectedADir.value, { file: music.bg });
 
         music.importStep = IMPORT_STEP.finish;
       } catch (e: any) {
         console.log(music, e)
         captureException(e.error || e, {
           tags: {
-            context: '导入乐曲出错',
+            context: t('chart.import.error.importError'),
             step: music.importStep,
           }
         })
-        errors.value.push({level: MessageLevel.Fatal, message: e.error?.message || e.error?.detail || e.message || e.toString(), name: music.name});
+        errors.value.push({ level: MessageLevel.Fatal, message: e.error?.message || e.error?.detail || e.message || e.toString(), name: music.name });
         try {
           await api.DeleteMusic(music.id, selectedADir.value);
         } catch {
@@ -213,22 +218,24 @@ export default defineComponent({
       }
     }
 
-    const startProcess = async () => {
+    startProcess = async (dir?: FileSystemDirectoryHandle | FileSystemDirectoryHandle[]) => {
       let id = getNextUnusedMusicId();
       const usedIds = [] as number[];
       errors.value = [];
-      tempOptions.value = {...defaultTempOptions};
+      tempOptions.value = { ...defaultTempOptions };
       step.value = STEP.selectFile;
       meta.value = [];
       currentProcessing.value = dummyMeta;
       try {
-        const dir = await window.showDirectoryPicker({
-          id: 'maidata-dir',
-          startIn: 'downloads',
-        });
+        if (!dir) {
+          dir = await window.showDirectoryPicker({
+            id: 'maidata-dir',
+            startIn: 'downloads',
+          });
+        }
         step.value = STEP.checking;
 
-        if (await tryGetFile(dir, 'maidata.txt')) {
+        if (dir instanceof FileSystemDirectoryHandle && await tryGetFile(dir, 'maidata.txt')) {
           await prepareFolder(dir, id);
         } else {
           for await (const entry of dir.values()) {
@@ -241,7 +248,7 @@ export default defineComponent({
         }
 
         if (!meta.value.length && !errors.value.length)
-          throw new Error('没有找到可以导入的乐曲');
+          throw new Error(t('chart.import.error.notFoundImportable'));
 
         step.value = STEP.showWarning;
 
@@ -268,22 +275,22 @@ export default defineComponent({
       } catch (e: any) {
         if (e.name === 'AbortError') return
         console.log(e)
-        globalCapture(e, "导入乐曲出错（全局）")
+        globalCapture(e, t('chart.import.error.importErrorGlobal'))
       } finally {
         if (step.value !== STEP.showResultError)
           step.value = STEP.none
       }
     }
 
-    return () => <NButton onClick={startProcess} secondary>
-      导入乐曲
-      <SelectFileTypeTip show={step.value === STEP.selectFile} closeModal={closeModal}/>
-      <CheckingModal title="正在检查..." show={step.value === STEP.checking} closeModal={closeModal}/>
+    return () => <NButton onClick={() => startProcess()} secondary>
+      {t('chart.import.title')}
+      <SelectFileTypeTip show={step.value === STEP.selectFile} closeModal={closeModal} />
+      <CheckingModal title={t('chart.import.checkingTitle')} show={step.value === STEP.checking} closeModal={closeModal} />
       <ErrorDisplayIdInput show={step.value === STEP.showWarning} closeModal={closeModal} proceed={modalResolve.value!} meta={meta.value} errors={errors.value}
-                           savedOptions={savedOptions.value} tempOptions={tempOptions.value}/>
-      <ImportStepDisplay show={step.value === STEP.importing} closeModal={closeModal} current={currentProcessing.value} movieProgress={currentMovieProgress.value}/>
+        savedOptions={savedOptions.value} tempOptions={tempOptions.value} />
+      <ImportStepDisplay show={step.value === STEP.importing} closeModal={closeModal} current={currentProcessing.value} movieProgress={currentMovieProgress.value} />
       <ErrorDisplayIdInput show={step.value === STEP.showResultError} closeModal={closeModal} proceed={() => {
-      }} meta={[]} savedOptions={savedOptions.value} tempOptions={tempOptions.value} errors={errors.value}/>
+      }} meta={[]} savedOptions={savedOptions.value} tempOptions={tempOptions.value} errors={errors.value} />
     </NButton>;
   }
 })

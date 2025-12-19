@@ -1,7 +1,6 @@
 ﻿using NAudio.Lame;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using Sitreamai;
 using Standart.Hash.xxHash;
 
 namespace MaiChartManager.Utils;
@@ -30,10 +29,10 @@ public static class AudioConvert
         return cachePath;
     }
 
-    public static void ConvertWavPathToMp3Stream(string wavPath, Stream mp3Stream)
+    public static void ConvertWavPathToMp3Stream(string wavPath, Stream mp3Stream, ID3TagData? tagData = null)
     {
         using var reader = new WaveFileReader(wavPath);
-        using var writer = new LameMP3FileWriter(mp3Stream, reader.WaveFormat, 256);
+        using var writer = new LameMP3FileWriter(mp3Stream, reader.WaveFormat, 256, tagData);
         reader.CopyTo(writer);
     }
 }

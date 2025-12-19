@@ -16,6 +16,7 @@ export interface AppVersionResult {
   license?: LicenseStatus;
   hardwareAcceleration?: HardwareAccelerationStatus;
   h264Encoder?: string | null;
+  locale?: string | null;
 }
 
 export enum AssetType {
@@ -54,6 +55,13 @@ export interface Chart {
   enable?: boolean;
   designer?: string | null;
   problems?: string[] | null;
+}
+
+export interface CheckAquaMaiFileResult {
+  isValid?: boolean;
+  version?: string | null;
+  signature?: VerifyResult;
+  buildDate?: string | null;
 }
 
 export interface CheckConflictEntry {
@@ -104,6 +112,8 @@ export interface GameModInfo {
   bundledAquaMaiVersion?: string | null;
   isJudgeDisplay4BInstalled?: boolean;
   isHidConflictExist?: boolean;
+  signature?: VerifyResult;
+  isMmlLibInstalled?: boolean;
 }
 
 export interface GenreAddRequest {
@@ -147,6 +157,7 @@ export interface GetAssetDirTxtValueRequest {
 export interface GetAssetsDirsResult {
   dirName?: string | null;
   subFiles?: string[] | null;
+  version?: string | null;
 }
 
 export enum HardwareAccelerationStatus {
@@ -158,6 +169,7 @@ export enum HardwareAccelerationStatus {
 export interface IConfigComment {
   commentEn?: string | null;
   commentZh?: string | null;
+  nameZh?: string | null;
 }
 
 export interface IConfigEntryAttribute {
@@ -250,7 +262,10 @@ export interface MusicXmlWithABJacket {
   version?: number;
   /** @format float */
   bpm?: number;
+  /** @format int32 */
+  subLockType?: number;
   disable?: boolean;
+  longMusic?: boolean;
   charts?: Chart[] | null;
   assetBundleJacket?: string | null;
   pseudoAssetBundleJacket?: string | null;
@@ -262,6 +277,12 @@ export interface MusicXmlWithABJacket {
   /** @format int32 */
   movieId?: number;
   problems?: string[] | null;
+}
+
+export enum PubKeyId {
+  None = "None",
+  Local = "Local",
+  CI = "CI",
 }
 
 export interface PutAssetDirTxtValueRequest {
@@ -316,6 +337,18 @@ export enum StorePurchaseStatus {
 
 export interface UploadAssetDirResult {
   dirName?: string | null;
+}
+
+export interface VerifyResult {
+  status?: VerifyStatus;
+  keyId?: PubKeyId;
+}
+
+export enum VerifyStatus {
+  NotFound = "NotFound",
+  InvalidKeyId = "InvalidKeyId",
+  InvalidSignature = "InvalidSignature",
+  Valid = "Valid",
 }
 
 export interface VersionXml {
@@ -811,6 +844,20 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
+     * @tags AudioConvertTool
+     * @name AudioConvertTool
+     * @request POST:/MaiChartManagerServlet/AudioConvertToolApi
+     */
+    AudioConvertTool: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/AudioConvertToolApi`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
      * @tags Chart
      * @name EditChartLevel
      * @request POST:/MaiChartManagerServlet/EditChartLevelApi/{assetDir}/{id}/{level}
@@ -907,47 +954,40 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags ChartPreview
-     * @name 1
-     * @request GET:/MaiChartManagerServlet/ChartPreviewApi/{assetDir}/{id}/{level}/Maidata/1
+     * @tags Chart
+     * @name ReplaceChart
+     * @request POST:/MaiChartManagerServlet/ReplaceChartApi/{assetDir}/{id}/{level}
      */
-    1: (id: number, level: number, assetDir: string, params: RequestParams = {}) =>
+    ReplaceChart: (
+      id: number,
+      level: number,
+      assetDir: string,
+      data: {
+        /** @format binary */
+        file?: File;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/ReplaceChartApi/${assetDir}/${id}/${level}`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags ChartPreview
+     * @name ChartPreview
+     * @request GET:/MaiChartManagerServlet/ChartPreviewApi/{assetDir}/{id}/{level}
+     */
+    ChartPreview: (id: number, level: number, assetDir: string, params: RequestParams = {}) =>
       this.request<string, any>({
-        path: `/MaiChartManagerServlet/ChartPreviewApi/${assetDir}/${id}/${level}/Maidata/1`,
+        path: `/MaiChartManagerServlet/ChartPreviewApi/${assetDir}/${id}/${level}`,
         method: "GET",
         format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags ChartPreview
-     * @name 12
-     * @request GET:/MaiChartManagerServlet/ChartPreviewApi/{assetDir}/{id}/{level}/Track/1
-     * @originalName 1
-     * @duplicate
-     */
-    12: (id: number, level: number, assetDir: string, params: RequestParams = {}) =>
-      this.request<void, any>({
-        path: `/MaiChartManagerServlet/ChartPreviewApi/${assetDir}/${id}/${level}/Track/1`,
-        method: "GET",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags ChartPreview
-     * @name 13
-     * @request GET:/MaiChartManagerServlet/ChartPreviewApi/{assetDir}/{id}/{level}/ImageFull/1
-     * @originalName 1
-     * @duplicate
-     */
-    13: (id: number, level: number, assetDir: string, params: RequestParams = {}) =>
-      this.request<void, any>({
-        path: `/MaiChartManagerServlet/ChartPreviewApi/${assetDir}/${id}/${level}/ImageFull/1`,
-        method: "GET",
         ...params,
       }),
 
@@ -979,6 +1019,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<void, any>({
         path: `/MaiChartManagerServlet/DeleteAssetsApi`,
         method: "DELETE",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Configuration
+     * @name GetAquaMaiConfig
+     * @request GET:/MaiChartManagerServlet/GetAquaMaiConfigApi
+     */
+    GetAquaMaiConfig: (
+      query?: {
+        /** @default false */
+        forceDefault?: boolean;
+        /** @default false */
+        skipSignatureCheck?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ConfigDto, any>({
+        path: `/MaiChartManagerServlet/GetAquaMaiConfigApi`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Configuration
+     * @name SetAquaMaiConfig
+     * @request PUT:/MaiChartManagerServlet/SetAquaMaiConfigApi
+     */
+    SetAquaMaiConfig: (data: ConfigSaveDto, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/SetAquaMaiConfigApi`,
+        method: "PUT",
         body: data,
         type: ContentType.Json,
         ...params,
@@ -1207,21 +1287,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags LocalAssets
-     * @name GetLocalAsset
-     * @request GET:/MaiChartManagerServlet/GetLocalAssetApi/{fileName}
-     */
-    GetLocalAsset: (fileName: string, params: RequestParams = {}) =>
-      this.request<void, any>({
-        path: `/MaiChartManagerServlet/GetLocalAssetApi/${fileName}`,
-        method: "GET",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Mod
+     * @tags Installation
      * @name IsMelonInstalled
      * @request GET:/MaiChartManagerServlet/IsMelonInstalledApi
      */
@@ -1236,7 +1302,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name IsAquaMaiInstalled
      * @request GET:/MaiChartManagerServlet/IsAquaMaiInstalledApi
      */
@@ -1251,7 +1317,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name GetGameModInfo
      * @request GET:/MaiChartManagerServlet/GetGameModInfoApi
      */
@@ -1266,7 +1332,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name DeleteHidConflict
      * @request POST:/MaiChartManagerServlet/DeleteHidConflictApi
      */
@@ -1280,7 +1346,21 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
+     * @name InstallMmlLibs
+     * @request POST:/MaiChartManagerServlet/InstallMmlLibsApi
+     */
+    InstallMmlLibs: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/InstallMmlLibsApi`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Installation
      * @name InstallJudgeDisplay4B
      * @request POST:/MaiChartManagerServlet/InstallJudgeDisplay4BApi
      */
@@ -1294,38 +1374,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
-     * @name GetAquaMaiConfig
-     * @request GET:/MaiChartManagerServlet/GetAquaMaiConfigApi
-     */
-    GetAquaMaiConfig: (params: RequestParams = {}) =>
-      this.request<ConfigDto, any>({
-        path: `/MaiChartManagerServlet/GetAquaMaiConfigApi`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Mod
-     * @name SetAquaMaiConfig
-     * @request PUT:/MaiChartManagerServlet/SetAquaMaiConfigApi
-     */
-    SetAquaMaiConfig: (data: ConfigSaveDto, params: RequestParams = {}) =>
-      this.request<void, any>({
-        path: `/MaiChartManagerServlet/SetAquaMaiConfigApi`,
-        method: "PUT",
-        body: data,
-        type: ContentType.Json,
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Mod
+     * @tags Installation
      * @name InstallMelonLoader
      * @request POST:/MaiChartManagerServlet/InstallMelonLoaderApi
      */
@@ -1339,7 +1388,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name InstallAquaMai
      * @request POST:/MaiChartManagerServlet/InstallAquaMaiApi
      */
@@ -1353,7 +1402,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name OpenJudgeAccuracyInfoPdf
      * @request POST:/MaiChartManagerServlet/OpenJudgeAccuracyInfoPdfApi
      */
@@ -1367,7 +1416,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * No description
      *
-     * @tags Mod
+     * @tags Installation
      * @name InstallAquaMaiOnline
      * @request POST:/MaiChartManagerServlet/InstallAquaMaiOnlineApi
      */
@@ -1377,6 +1426,110 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "POST",
         body: data,
         type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Installation
+     * @name KillGameProcess
+     * @request POST:/MaiChartManagerServlet/KillGameProcessApi
+     */
+    KillGameProcess: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/KillGameProcessApi`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags LocalAssets
+     * @name GetLocalAsset
+     * @request GET:/MaiChartManagerServlet/GetLocalAssetApi/{fileName}
+     */
+    GetLocalAsset: (fileName: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/GetLocalAssetApi/${fileName}`,
+        method: "GET",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Locale
+     * @name GetCurrentLocale
+     * @request GET:/MaiChartManagerServlet/GetCurrentLocaleApi
+     */
+    GetCurrentLocale: (params: RequestParams = {}) =>
+      this.request<string, any>({
+        path: `/MaiChartManagerServlet/GetCurrentLocaleApi`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Locale
+     * @name SetLocale
+     * @request POST:/MaiChartManagerServlet/SetLocaleApi
+     */
+    SetLocale: (data: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/SetLocaleApi`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags ManualInstall
+     * @name CheckAquaMaiFile
+     * @request POST:/MaiChartManagerServlet/CheckAquaMaiFileApi
+     */
+    CheckAquaMaiFile: (
+      data: {
+        /** @format binary */
+        file?: File;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<CheckAquaMaiFileResult, any>({
+        path: `/MaiChartManagerServlet/CheckAquaMaiFileApi`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags ManualInstall
+     * @name InstallAquaMaiFile
+     * @request POST:/MaiChartManagerServlet/InstallAquaMaiFileApi
+     */
+    InstallAquaMaiFile: (
+      data: {
+        /** @format binary */
+        file?: File;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/InstallAquaMaiFileApi`,
+        method: "POST",
+        body: data,
+        type: ContentType.FormData,
         ...params,
       }),
 
@@ -1397,6 +1550,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         file?: File;
         noScale?: boolean;
         h264?: boolean;
+        yuv420p?: boolean;
       },
       params: RequestParams = {},
     ) =>
@@ -1555,6 +1709,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * No description
      *
      * @tags Music
+     * @name EditMusicLong
+     * @request POST:/MaiChartManagerServlet/EditMusicLongApi/{assetDir}/{id}
+     */
+    EditMusicLong: (id: number, assetDir: string, data: boolean, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/EditMusicLongApi/${assetDir}/${id}`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Music
      * @name SaveMusic
      * @request POST:/MaiChartManagerServlet/SaveMusicApi/{assetDir}/{id}
      */
@@ -1643,6 +1813,20 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     RequestOpenExplorer: (id: number, assetDir: string, params: RequestParams = {}) =>
       this.request<void, any>({
         path: `/MaiChartManagerServlet/RequestOpenExplorerApi/${assetDir}/${id}`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Music
+     * @name RequestOpenXml
+     * @request POST:/MaiChartManagerServlet/RequestOpenXmlApi/{assetDir}/{id}
+     */
+    RequestOpenXml: (id: number, assetDir: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/RequestOpenXmlApi/${assetDir}/${id}`,
         method: "POST",
         ...params,
       }),
@@ -1784,6 +1968,27 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<void, any>({
         path: `/MaiChartManagerServlet/ExportAsMaidataApi/${assetDir}/${id}`,
         method: "GET",
+        query: query,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags VideoConvertTool
+     * @name VideoConvertTool
+     * @request POST:/MaiChartManagerServlet/VideoConvertToolApi
+     */
+    VideoConvertTool: (
+      query?: {
+        noScale?: boolean;
+        yuv420p?: boolean;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/MaiChartManagerServlet/VideoConvertToolApi`,
+        method: "POST",
         query: query,
         ...params,
       }),

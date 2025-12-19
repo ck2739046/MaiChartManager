@@ -1,6 +1,5 @@
 ﻿using System.Xml;
 using Microsoft.VisualBasic.FileIO;
-using Sitreamai.Models;
 
 namespace MaiChartManager.Models;
 
@@ -123,26 +122,66 @@ public class MusicXmlWithABJacket(string filePath, string gamePath, string asset
 
     public void Delete()
     {
-        if (HasJacket)
+        if (HasJacket && !JacketPath?.Contains(@"\A000\", StringComparison.InvariantCultureIgnoreCase) == true)
         {
-            FileSystem.DeleteFile(JacketPath);
+            Console.WriteLine("删除 jacket: " + JacketPath);
+            try
+            {
+                FileSystem.DeleteFile(JacketPath);
+            }
+            catch
+            {
+                Console.WriteLine($"删除 jacket 失败: {JacketPath}");
+            }
         }
 
-        if (StaticSettings.AcbAwb.TryGetValue($"music{NonDxId:000000}.acb", out var acb))
+        if (StaticSettings.AcbAwb.TryGetValue($"music{NonDxId:000000}.acb", out var acb) && acb?.Contains(@"\A000\", StringComparison.InvariantCultureIgnoreCase) == false)
         {
-            FileSystem.DeleteFile(acb);
+            Console.WriteLine("删除 acb: " + acb);
+            try
+            {
+                FileSystem.DeleteFile(acb);
+            }
+            catch
+            {
+                Console.WriteLine($"删除 acb 失败: {acb}");
+            }
         }
 
-        if (StaticSettings.AcbAwb.TryGetValue($"music{NonDxId:000000}.awb", out var awb))
+        if (StaticSettings.AcbAwb.TryGetValue($"music{NonDxId:000000}.awb", out var awb) && awb?.Contains(@"\A000\", StringComparison.InvariantCultureIgnoreCase) == false)
         {
-            FileSystem.DeleteFile(awb);
+            Console.WriteLine("删除 awb: " + awb);
+            try
+            {
+                FileSystem.DeleteFile(awb);
+            }
+            catch
+            {
+                Console.WriteLine($"删除 awb 失败: {awb}");
+            }
         }
 
-        if (StaticSettings.MovieDataMap.TryGetValue(NonDxId, out var movieData))
+        if (StaticSettings.MovieDataMap.TryGetValue(NonDxId, out var movieData) && movieData?.Contains(@"\A000\", StringComparison.InvariantCultureIgnoreCase) == false)
         {
-            FileSystem.DeleteFile(movieData);
+            Console.WriteLine("删除 movieData: " + movieData);
+            try
+            {
+                FileSystem.DeleteFile(movieData);
+            }
+            catch
+            {
+                Console.WriteLine($"删除 movieData 失败: {movieData}");
+            }
         }
 
-        FileSystem.DeleteDirectory(Path.GetDirectoryName(FilePath), DeleteDirectoryOption.DeleteAllContents);
+        try
+        {
+            Console.WriteLine("删除目录: " + Path.GetDirectoryName(FilePath));
+            FileSystem.DeleteDirectory(Path.GetDirectoryName(FilePath), DeleteDirectoryOption.DeleteAllContents);
+        }
+        catch
+        {
+            Console.WriteLine($"删除目录失败: {Path.GetDirectoryName(FilePath)}");
+        }
     }
 }

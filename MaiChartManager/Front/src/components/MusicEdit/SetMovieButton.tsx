@@ -7,12 +7,16 @@ import { aquaMaiConfig, globalCapture, selectedADir, showNeedPurchaseDialog, ver
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { defaultSavedOptions, MOVIE_CODEC } from "@/components/ImportCreateChartButton/ImportChartButton/types";
 import { useStorage } from "@vueuse/core";
+import { t } from "@/locales";
 
 enum STEP {
   None,
   Select,
   Offset,
   Progress,
+}
+
+export let uploadFlow = async (fileHandle?: FileSystemFileHandle) => {
 }
 
 export default defineComponent({
@@ -44,9 +48,10 @@ export default defineComponent({
       const h264 = shouldUseH264();
       console.log('use h264', h264);
       body.append('h264', h264.toString());
-      body.append('file', movie);
       body.append('padding', offset.toString());
       body.append('noScale', noScale.value.toString());
+      body.append('yuv420p', savedOptions.value.yuv420p.toString());
+      body.append('file', movie);
       const controller = new AbortController();
       fetchEventSource(getUrl(`SetMovieApi/${selectedADir.value}/${id}`), {
         signal: controller.signal,
@@ -82,28 +87,48 @@ export default defineComponent({
       });
     })
 
-    const uploadFlow = async () => {
+    uploadFlow = async (fileHandle?: FileSystemFileHandle) => {
       step.value = STEP.Select
       try {
-        const [fileHandle] = await window.showOpenFilePicker({
-          id: 'movie',
-          startIn: 'downloads',
-          types: [
-            {
-              description: "支持的文件类型",
-              accept: {
-                "video/*": [".dat"],
-                "image/*": [],
+        if (!fileHandle) {
+          [fileHandle] = await window.showOpenFilePicker({
+            id: 'movie',
+            startIn: 'downloads',
+            types: [
+              {
+                description: t('music.edit.supportedFileTypes'),
+                accept: {
+                  "video/*": [".dat"],
+                  "image/*": [],
+                },
               },
-            },
-          ],
-        });
+            ],
+          });
+        }
         step.value = STEP.None
         if (!fileHandle) return;
         const file = await fileHandle.getFile() as File;
 
         if (file.name.endsWith('.dat')) {
           load.value = true;
+          await new Promise<void>((resolve, reject) => {
+            dialog.info({
+              showIcon: false,
+              title: t('common.confirm'),
+              content: t('music.edit.confirmSetMovie', { filename: file.name }),
+              positiveText: t('common.confirm'),
+              negativeText: t('common.cancel'),
+              positiveButtonProps: {
+                type: 'primary',
+              },
+              onPositiveClick: () => {
+                resolve();
+              },
+              onNegativeClick: () => {
+                reject(new DOMException('', 'AbortError'));
+              },
+            })
+          })
           await api.SetMovie(props.song.id!, selectedADir.value, { file, padding: 0 });
         } else if (version.value?.license !== LicenseStatus.Active) {
           showNeedPurchaseDialog.value = true;
@@ -120,25 +145,25 @@ export default defineComponent({
           step.value = STEP.Progress
           await uploadMovie(props.song.id!, file, offset.value);
           console.log("upload movie success")
-          message.success("保存成功")
+          message.success(t('message.saveSuccess'))
         }
       } catch (e: any) {
         if (e?.name === 'AbortError') return
         console.log(e)
-        globalCapture(e, "导入 PV 出错")
+        globalCapture(e, t('music.edit.importPvError'))
       } finally {
         step.value = STEP.None
         load.value = false;
       }
     }
 
-    return () => <NButton secondary onClick={uploadFlow} loading={load.value} disabled={props.disabled}>
-      设置 PV
+    return () => <NButton secondary onClick={() => uploadFlow()} loading={load.value} disabled={props.disabled}>
+      {t('music.edit.setPv')}
 
       <NDrawer show={step.value === STEP.Select} height={250} placement="bottom">
-        <NDrawerContent title="可以选择的文件类型">
+        <NDrawerContent title={t('music.edit.selectFileTypes')}>
           <NFlex vertical>
-            任何 FFmpeg 支持的视频格式或单张图片（赞助版功能），或者已经自行转换好的 DAT 文件
+            {t('music.edit.pvFileHint')}
             <div class="grid cols-4 justify-items-center text-8em gap-10">
               <FileTypeIcon type="MP4"/>
               <FileTypeIcon type="JPG"/>
@@ -149,37 +174,40 @@ export default defineComponent({
       </NDrawer>
       <NModal
         preset="card"
-        class="w-[min(30vw,25em)]"
-        title="设置偏移（秒）"
+        class="w-[min(30vw,30em)]"
+        title={t('music.edit.setOffsetSeconds')}
         show={step.value === STEP.Offset}
         onUpdateShow={() => step.value = STEP.None}
       >{{
         default: () => <NFlex vertical size="large">
-          <div>设为正数可以在视频前面添加黑场空白，设为负数则裁掉视频前面的一部分</div>
+          <div>{t('music.edit.offsetHint')}</div>
           <NInputNumber v-model:value={offset.value} class="w-full" step={0.01}/>
           <NCheckbox v-model:checked={noScale.value}>
-            不要缩放 BGA 到 1080 宽度
+            {t('chart.import.option.noScale')}
           </NCheckbox>
-          <NFormItem label="PV 编码" labelPlacement="left" showFeedback={false}>
+          <NFormItem label={t('chart.import.option.pvCodec')} labelPlacement="left" showFeedback={false}>
             <NFlex vertical class="w-full">
               <NFlex class="h-34px" align="center">
                 <NSelect v-model:value={savedOptions.value.movieCodec} options={[
-                  { label: '优先 H264', value: MOVIE_CODEC.PreferH264 },
-                  { label: '强制 H264', value: MOVIE_CODEC.ForceH264 },
-                  { label: '强制 VP9 USM', value: MOVIE_CODEC.ForceVP9 },
+                  { label: t('chart.import.option.codecPreferH264'), value: MOVIE_CODEC.PreferH264 },
+                  { label: t('chart.import.option.codecForceH264'), value: MOVIE_CODEC.ForceH264 },
+                  { label: t('chart.import.option.codecForceVP9'), value: MOVIE_CODEC.ForceVP9 },
                 ]}/>
               </NFlex>
             </NFlex>
           </NFormItem>
+          <NCheckbox v-model:checked={savedOptions.value.yuv420p}>
+            {t('chart.import.option.yuv420p')}
+          </NCheckbox>
         </NFlex>,
         footer: () => <NFlex justify="end">
-          <NButton onClick={okResolve.value as any}>确定</NButton>
+          <NButton onClick={okResolve.value as any}>{t('common.confirm')}</NButton>
         </NFlex>
       }}</NModal>
       <NModal
         preset="card"
         class="w-[min(40vw,40em)]"
-        title="正在转换…"
+        title={t('tools.converting')}
         show={step.value === STEP.Progress}
         closable={false}
         maskClosable={false}
@@ -192,7 +220,7 @@ export default defineComponent({
           indicator-placement="inside"
           processing
         >
-          {progress.value === 100 ? '还在处理，别急…' : `${progress.value}%`}
+          {progress.value === 100 ? t('tools.videoOptions.processing') : `${progress.value}%`}
         </NProgress>
       </NModal>
     </NButton>;

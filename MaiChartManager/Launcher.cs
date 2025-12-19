@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -17,7 +17,7 @@ public partial class Launcher : Form
         InitializeComponent();
         label3.Text = $@"v{Application.ProductVersion}";
 # if CRACK
-        label3.Text += " 此版本不可流通";
+        label3.Text += " 内部版本";
 # endif
         checkBox1.Checked = StaticSettings.Config.Export;
         textBox1.Text = StaticSettings.Config.GamePath;
@@ -29,11 +29,18 @@ public partial class Launcher : Form
 # if DEBUG
         checkBox1.Checked = true;
         StaticSettings.Config.Export = true;
-        textBox1.Text = @"D:\Arcade\Maimai\SDEZ155 Debug\Package";
+        textBox1.Text = @"D:\Arcade\Maimai\SDEZ160 Debug";
         StartClicked(null, null);
         notifyIcon1.Visible = true;
         WindowState = FormWindowState.Minimized;
 # endif
+        comboBox1.SelectedIndex = StaticSettings.CurrentLocale switch
+        {
+            "zh" => 0,
+            "zh-TW" => 1,
+            "en" => 2,
+            _ => 2,
+        };
         if (!AppMain.IsFromStartup)
         {
             Visible = true;
@@ -92,9 +99,9 @@ public partial class Launcher : Form
 
     private void StartClicked(object sender, EventArgs e)
     {
-        if (button2.Text == "停止")
+        if (button2.Text == Locale.LauncherStop)
         {
-            button2.Text = "启动";
+            button2.Text = Locale.LauncherStart;
             textBox1.Enabled = true;
             button1.Enabled = true;
             checkBox1.Enabled = true;
@@ -109,20 +116,24 @@ public partial class Launcher : Form
         if (string.IsNullOrWhiteSpace(textBox1.Text)) return;
         if (!Path.Exists(textBox1.Text))
         {
-            MessageBox.Show("选择的路径不存在！");
+            MessageBox.Show(Locale.PathNotExist);
             return;
         }
 
         StaticSettings.GamePath = textBox1.Text;
-        if (ContainsSpecialCharacters(StaticSettings.GamePath))
+        if (!Directory.Exists(StaticSettings.StreamingAssets) && Directory.Exists(Path.Combine(StaticSettings.GamePath, "Package")))
         {
-            MessageBox.Show("警告：路径中包含特殊字符或中文，可能会导致 MelonLoader 之类的工具出现兼容性问题，请将目录移动至英文路径！", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            StaticSettings.GamePath = Path.Combine(StaticSettings.GamePath, "Package");
+        }
+        if (!Directory.Exists(StaticSettings.StreamingAssets))
+        {
+            MessageBox.Show(Locale.PathNotGameDir);
+            return;
         }
 
-        if (!Path.Exists(StaticSettings.StreamingAssets))
+        if (ContainsSpecialCharacters(StaticSettings.GamePath))
         {
-            MessageBox.Show("选择的路径中看起来不包含游戏文件，请选择 Sinmai.exe 所在的文件夹");
-            return;
+            MessageBox.Show(Locale.PathContainsSpecialChars, Locale.PathContainsSpecialCharsTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         if (!checkBox1.Checked && checkBox_startup.Checked)
@@ -146,7 +157,7 @@ public partial class Launcher : Form
         checkBoxLanAuth.Enabled = false;
         textBoxLanAuthUser.Enabled = false;
         textBoxLanAuthPass.Enabled = false;
-        button2.Text = "停止";
+        button2.Text = Locale.LauncherStop;
 
         ServerManager.StartApp(checkBox1.Checked, () =>
         {
@@ -235,17 +246,17 @@ public partial class Launcher : Form
         if ((ModifierKeys & Keys.Shift) != Keys.Shift) return;
         if (IapManager.License == IapManager.LicenseStatus.Active) return;
 
-        var input = Interaction.InputBox("请输入激活码", "离线激活");
+        var input = Interaction.InputBox(Locale.OfflineActivationPrompt, Locale.OfflineActivationTitle);
         if (string.IsNullOrWhiteSpace(input)) return;
 
         var verify = await OfflineReg.VerifyAsync(input);
         if (!verify.IsValid)
         {
-            MessageBox.Show("激活码无效");
+            MessageBox.Show(Locale.ActivationCodeInvalid);
             return;
         }
 
-        MessageBox.Show("赞助版功能已激活，谢谢你");
+        MessageBox.Show(Locale.ActivationSuccess);
 
         StaticSettings.Config.OfflineKey = input;
         await SaveConfigFileAsync();
@@ -256,5 +267,41 @@ public partial class Launcher : Form
     {
         textBoxLanAuthUser.Visible = checkBoxLanAuth.Checked;
         textBoxLanAuthPass.Visible = checkBoxLanAuth.Checked;
+    }
+
+    private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        switch (comboBox1.SelectedIndex)
+        {
+            case 0:
+                AppMain.SetLocale("zh");
+                break;
+            case 1:
+                AppMain.SetLocale("zh-TW");
+                break;
+            case 2:
+                AppMain.SetLocale("en");
+                break;
+        }
+
+        RefreshLocalizedTexts();
+    }
+
+    private void RefreshLocalizedTexts()
+    {
+        button1.Text = Locale.LauncherSelectGameDir;
+        button4.Text = Locale.LauncherExit;
+        label2.Text = Locale.LauncherGameDir;
+        checkBox1.Text = Locale.LauncherOpenToLan;
+        checkBox_startup.Text = Locale.LauncherStartup;
+        checkBoxLanAuth.Text = Locale.LauncherNeedLogin;
+        if (button2.Text == Locale.LauncherStop || button2.Text.Contains("Stop") || button2.Text.Contains("停止"))
+        {
+            button2.Text = Locale.LauncherStop;
+        }
+        else
+        {
+            button2.Text = Locale.LauncherStart;
+        }
     }
 }

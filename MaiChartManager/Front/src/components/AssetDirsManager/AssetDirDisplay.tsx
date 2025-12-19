@@ -5,23 +5,28 @@ import OfficialChartToggle from "@/components/AssetDirsManager/OfficialChartTogg
 import MemosDisplay from "@/components/AssetDirsManager/MemosDisplay";
 import DeleteButton from "@/components/AssetDirsManager/DeleteButton";
 import CheckConflictButton from "@/components/AssetDirsManager/CheckConflictButton";
+import { useI18n } from 'vue-i18n';
 
 export default defineComponent({
   props: {
     dir: {type: Object as PropType<GetAssetsDirsResult>, required: true}
   },
   setup(props) {
+    const { t } = useI18n();
 
     return () => <div class="grid cols-[10em_1fr_9em_6em_14em] items-center gap-5 m-x">
-      {props.dir.dirName}
-      <div/>
+      <div>
+        {props.dir.dirName}
+        <span class="op-70">{props.dir.version ? ` (Ver.${props.dir.version})` : ''}</span>
+      </div>
+      <div />
       <div>
         {
           props.dir.subFiles!.some(it => it === 'DataConfig.xml') ?
             <NPopover trigger="hover">
               {{
-                trigger: () => '存放官谱',
-                default: () => '由于存在 DataConfig.xml，该目录将标记为存放官谱'
+                trigger: () => t('assetDir.storingOfficial'),
+                default: () => t('assetDir.dataConfigExists')
               }}
             </NPopover> :
             <OfficialChartToggle dir={props.dir}/>

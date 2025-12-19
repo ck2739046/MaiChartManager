@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.17763.0</TargetFramework>
+      <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>false</InvariantGlobalization>
@@ -34,43 +34,51 @@
     <IsPublishable>True</IsPublishable>
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants/>
+    <Optimize>true</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Crack|x64' ">
-    <IsPublishable>False</IsPublishable>
+    <IsPublishable>True</IsPublishable>
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>CRACK</DefineConstants>
-    <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
+    <Optimize>true</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AquaMai\AquaMai.Config.HeadlessLoader\AquaMai.Config.HeadlessLoader.csproj"/>
-    <ProjectReference Include="..\Sitreamai\Sitreamai.csproj"/>
+      <ProjectReference Include="..\MaiLib\MaiLib.csproj"/>
+      <ProjectReference Include="..\SimaiSharp\SimaiSharp\SimaiSharp.csproj"/>
     <ProjectReference Include="..\SonicAudioTools\Source\SonicAudioLib\SonicAudioLib.csproj"/>
     <ProjectReference Include="..\XV2-Tools\LB_Common\LB_Common.csproj"/>
+      <ProjectReference Include="..\XV2-Tools\Xv2CoreLib\Xv2CoreLib.csproj"/>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DesktopBridge.Helpers" Version="1.2.2"/>
     <PackageReference Include="idunno.Authentication.Basic" Version="2.4.0"/>
-      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8"/>
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8"/>
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8"/>
-      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.14.0"/>
-      <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3405.78"/>
+      <PackageReference Include="LibNMeCab" Version="0.10.2"/>
+      <PackageReference Include="LibNMeCab.IpaDicBin" Version="0.10.0"/>
+      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0"/>
+      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0"/>
+      <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3595.46"/>
+      <PackageReference Include="NAudio" Version="2.2.1"/>
     <PackageReference Include="NAudio.Lame" Version="2.1.0"/>
+      <PackageReference Include="NAudio.Vorbis" Version="1.5.0"/>
       <PackageReference Include="OSVersionExt" Version="3.0.0"/>
+      <PackageReference Include="PeNet" Version="5.1.0" />
+      <PackageReference Include="PeNet.Asn1" Version="2.0.2" />
     <PackageReference Include="Pluralsight.Crypto" Version="1.1.0"/>
     <PackageReference Include="pythonnet" Version="3.0.5"/>
-      <PackageReference Include="Sentry" Version="5.14.1"/>
-      <PackageReference Include="Sentry.AspNetCore" Version="5.14.1"/>
+      <PackageReference Include="Sentry" Version="5.16.2"/>
+      <PackageReference Include="Sentry.AspNetCore" Version="5.16.2"/>
     <PackageReference Include="SingleInstanceCore" Version="2.2.2"/>
       <PackageReference Include="SixLabors.ImageSharp" Version="2.1.11"/>
     <PackageReference Include="Standart.Hash.xxHash" Version="4.0.5"/>
-      <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3"/>
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.3"/>
-      <PackageReference Include="System.Runtime.Serialization.Formatters" Version="9.0.8"/>
-      <PackageReference Include="Vanara.Windows.Forms" Version="4.1.6"/>
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1"/>
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.0.1"/>
+      <PackageReference Include="System.Runtime.Serialization.Formatters" Version="10.0.0"/>
+      <PackageReference Include="Vanara.Windows.Forms" Version="4.2.1"/>
     <PackageReference Include="WinBlur" Version="1.0.0"/>
       <PackageReference Include="Xabe.FFmpeg" Version="6.0.2"/>
       <PackageReference Include="YamlDotNet" Version="16.3.0"/>
+      <PackageReference Include="YAXLib" Version="2.15.0"/>
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Launcher.cs">
@@ -86,14 +94,19 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Remove="Libs\**"/>
+    <Compile Update="Locale.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Locale.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Remove="Front\**"/>
     <Content Remove="Libs\**"/>
-    <Content Include="..\LICENSE">
+    <None Include="..\LICENSE">
       <Link>LICENSE</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Remove="Front\**"/>
@@ -121,6 +134,7 @@
       <TargetPath>%(Filename)%(Extension)</TargetPath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Remove="C:\Users\Clansty\.nuget\packages\naudio.vorbis\1.5.0\contentFiles\any\netstandard2.0\README.md" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="AssetStudio">
@@ -138,5 +152,15 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Update="Locale.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Locale.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+      <EmbeddedResource Update="Locale.zh-hans.resx">
+          <DependentUpon>Locale.resx</DependentUpon>
+      </EmbeddedResource>
+      <EmbeddedResource Update="Locale.zh-hant.resx">
+          <DependentUpon>Locale.resx</DependentUpon>
+      </EmbeddedResource>
   </ItemGroup>
 </Project>

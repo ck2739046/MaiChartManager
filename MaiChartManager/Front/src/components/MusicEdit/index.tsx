@@ -1,8 +1,8 @@
 import { computed, defineComponent, onMounted, PropType, ref, watch } from "vue";
 import { Chart, GenreXml, MusicXmlWithABJacket } from "@/client/apiGen";
-import { addVersionList, genreList, globalCapture, selectedADir, selectedMusic as info, selectMusicId, updateAddVersionList, updateGenreList, updateMusicList } from "@/store/refs";
+import { addVersionList, genreList, globalCapture, selectedADir, selectedMusic as info, selectMusicId, updateAddVersionList, updateGenreList, updateMusicList, selectedLevel } from "@/store/refs";
 import api from "@/client/api";
-import { NButton, NFlex, NForm, NFormItem, NInput, NInputNumber, NSelect, NTabPane, NTabs, SelectOption, useDialog, useMessage } from "naive-ui";
+import { NButton, NFlex, NForm, NFormItem, NInput, NInputNumber, NSelect, NSwitch, NTabPane, NTabs, SelectOption, useDialog, useMessage } from "naive-ui";
 import JacketBox from "../JacketBox";
 import dxIcon from "@/assets/dxIcon.png";
 import stdIcon from "@/assets/stdIcon.png";
@@ -13,10 +13,12 @@ import AcbAwb from "@/components/MusicEdit/AcbAwb";
 import GenreInput from "@/components/GenreInput";
 import VersionInput from "@/components/VersionInput";
 import { captureException } from "@sentry/vue"
+import noJacket from "@/assets/noJacket.webp";
+import { getUrl } from "@/client/api";
+import { t } from "@/locales";
 
 const Component = defineComponent({
   setup() {
-    const selectedLevel = ref(0);
     const message = useMessage();
 
     const firstEnabledChart = info.value?.charts?.findIndex(chart => chart.enable);
@@ -38,6 +40,20 @@ const Component = defineComponent({
     watch(() => info.value?.addVersionId, sync('addVersionId', api.EditMusicAddVersion));
     watch(() => info.value?.utageKanji, sync('utageKanji', api.EditMusicUtageKanji));
     watch(() => info.value?.comment, sync('comment', api.EditMusicComment));
+    watch(() => info.value?.longMusic, sync('longMusic', api.EditMusicLong));
+
+    onMounted(()=>{
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: info.value?.name || '',
+          artist: info.value?.artist || '',
+          album: genreList.value.find(genre => genre.id === info.value?.genreId)?.genreName || '',
+          artwork: [
+            { src: info.value?.hasJacket ? getUrl(`GetJacketApi/${selectedADir.value}/${info.value?.id}?${(info.value as any).updateTime}`) : noJacket,  type: 'image/png' },
+          ]
+        });
+      }
+    })
 
     return () => info.value && <NForm showFeedback={false} labelPlacement="top" disabled={selectedADir.value === 'A000'}>
         <div class="grid cols-[1fr_12em] gap-5">
@@ -52,34 +68,38 @@ const Component = defineComponent({
                         <span class="select-text">{info.value.id}</span>
                     </div>
                 </NFlex>
-                <NFormItem label="歌曲名称">
-                    <NInput v-model:value={info.value.name}/>
+                <NFormItem label={t('music.edit.name')}>
+                    <div class="flex items-center gap-2 w-full">
+                        <NInput v-model:value={info.value.name} class="w-0 grow"/>
+                        <NSwitch v-model:value={info.value.longMusic}/>
+                        <div class="shrink-0">{t('common.longMusic')}</div>
+                    </div>
                 </NFormItem>
-                <NFormItem label="作者">
+                <NFormItem label={t('music.edit.artist')}>
                     <NInput v-model:value={info.value.artist}/>
                 </NFormItem>
             </NFlex>
             <JacketBox info={info.value} class="h-12em w-12em"/>
         </div>
         <NFlex vertical>
-            <NFormItem label="BPM">
+            <NFormItem label={t('music.edit.bpm')}>
                 <NInputNumber showButton={false} class="w-full" v-model:value={info.value.bpm} min={0}/>
             </NFormItem>
-            <NFormItem label="版本">
+            <NFormItem label={t('music.edit.version')}>
                 <VersionInput v-model:value={info.value.version}/>
             </NFormItem>
-            <NFormItem label="流派">
+            <NFormItem label={t('music.edit.genre')}>
                 <GenreInput options={genreList.value} v-model:value={info.value.genreId}/>
             </NFormItem>
-            <NFormItem label="版本分类">
+            <NFormItem label={t('music.edit.versionCategory')}>
                 <GenreInput options={addVersionList.value} v-model:value={info.value.addVersionId}/>
             </NFormItem>
           {info.value.genreId === UTAGE_GENRE && // 宴会场
               <>
-                  <NFormItem label="宴谱种类">
+                  <NFormItem label={t('music.edit.utageType')}>
                       <NInput v-model:value={info.value.utageKanji}/>
                   </NFormItem>
-                  <NFormItem label="宴谱备注">
+                  <NFormItem label={t('music.edit.utageComment')}>
                       <NInput v-model:value={info.value.comment}/>
                   </NFormItem>
               </>}

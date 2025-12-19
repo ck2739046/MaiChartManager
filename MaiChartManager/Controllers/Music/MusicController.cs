@@ -4,7 +4,7 @@ using MaiChartManager.Models;
 using MaiChartManager.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic.FileIO;
-using Sitreamai.Models;
+using MusicXml = MaiChartManager.Models.MusicXml;
 
 namespace MaiChartManager.Controllers.Music;
 
@@ -100,6 +100,16 @@ public class MusicController(StaticSettings settings, ILogger<MusicController> l
     }
 
     [HttpPost]
+    public void EditMusicLong(int id, [FromBody] bool value, string assetDir)
+    {
+        var music = settings.GetMusic(id, assetDir);
+        if (music != null)
+        {
+            music.LongMusic = value;
+        }
+    }
+
+    [HttpPost]
     public void SaveMusic(int id, string assetDir)
     {
         var music = settings.GetMusic(id, assetDir);
@@ -122,7 +132,7 @@ public class MusicController(StaticSettings settings, ILogger<MusicController> l
     {
         if (settings.GetMusic(id, assetDir) is not null)
         {
-            return "当前资源目录里已经存在这个 ID 了";
+            return Locale.MusicIdExists;
         }
 
         var music = MusicXmlWithABJacket.CreateNew(id, StaticSettings.GamePath, assetDir);
@@ -138,7 +148,7 @@ public class MusicController(StaticSettings settings, ILogger<MusicController> l
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!MusicXml.jacketExtensions.Contains(ext[1..]))
         {
-            return "不支持的图片格式";
+            return Locale.UnsupportedImageFormat;
         }
 
         var music = settings.GetMusic(id, assetDir);
@@ -179,6 +189,20 @@ public class MusicController(StaticSettings settings, ILogger<MusicController> l
         if (music != null)
         {
             Process.Start("explorer.exe", $"/select,\"{music.FilePath}\"");
+        }
+    }
+
+    [HttpPost]
+    public void RequestOpenXml(int id, string assetDir)
+    {
+        var music = settings.GetMusic(id, assetDir);
+        if (music != null)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = music.FilePath,
+                UseShellExecute = true
+            });
         }
     }
 }

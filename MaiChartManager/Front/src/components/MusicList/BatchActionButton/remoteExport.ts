@@ -3,11 +3,13 @@ import { currentProcessItem, progressAll, progressCurrent } from "@/components/M
 import { MusicXmlWithABJacket } from "@/client/apiGen";
 import { ZipReader } from "@zip.js/zip.js";
 import getSubDirFile from "@/utils/getSubDirFile";
-import { OPTIONS } from "@/components/MusicList/BatchActionButton/ChooseAction";
+import { MAIDATA_SUBDIR, OPTIONS } from "@/components/MusicList/BatchActionButton/ChooseAction";
 import { useNotification } from "naive-ui";
 import { getUrl } from "@/client/api";
+import { addVersionList, genreList } from "@/store/refs";
+import { t } from '@/locales';
 
-export default async (setStep: (step: STEP) => void, musicList: MusicXmlWithABJacket[], action: OPTIONS, notify: ReturnType<typeof useNotification>) => {
+export default async (setStep: (step: STEP) => void, musicList: MusicXmlWithABJacket[], action: OPTIONS, notify: ReturnType<typeof useNotification>, dirOption: MAIDATA_SUBDIR) => {
   let folderHandle: FileSystemDirectoryHandle;
   try {
     folderHandle = await window.showDirectoryPicker({
@@ -61,7 +63,19 @@ export default async (setStep: (step: STEP) => void, musicList: MusicXmlWithABJa
         }
         let filename = entry.filename;
         if (action === OPTIONS.ConvertToMaidata || action === OPTIONS.ConvertToMaidataIgnoreVideo) {
-          filename = `${music.name}/${filename}`;
+          let dir = '';
+          switch (dirOption) {
+            case MAIDATA_SUBDIR.Genre:
+              dir = genreList.value.find(genre => genre.id === music.genreId)?.genreName || t('music.list.unknown');
+              break;
+            case MAIDATA_SUBDIR.Version:
+              dir = addVersionList.value.find(version => version.id === music.addVersionId)?.genreName || t('music.list.unknown');
+              break;
+          }
+          if (dir) {
+            dir = sanitizeFilename(dir) + '/';
+          }
+          filename = `${dir}${sanitizeFilename(music.name!)}${music.id! > 1e4 && music.id! < 2e4 ? ' [DX]' : ''}/${filename}`;
         }
         const fileHandle = await getSubDirFile(folderHandle, filename);
         const writable = await fileHandle.createWritable();
@@ -69,7 +83,7 @@ export default async (setStep: (step: STEP) => void, musicList: MusicXmlWithABJa
       } catch (e) {
         console.error(e);
         notify.error({
-          title: '导出失败',
+          title: t('error.exportFailed'),
           content: music.name!,
         })
       }
@@ -77,4 +91,8 @@ export default async (setStep: (step: STEP) => void, musicList: MusicXmlWithABJa
   }
 
   setStep(STEP.None);
+}
+
+const sanitizeFilename = (filename: string) => {
+  return filename.replace(/[\/:*?"<>|]/g, '_').replace(/[.\s]+$/, '');
 }

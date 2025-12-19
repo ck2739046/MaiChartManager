@@ -57,6 +57,7 @@ export const defaultSavedOptions = {
   disableBga: false,
   noScale: false,
   movieCodec: MOVIE_CODEC.ForceVP9,
+  yuv420p: true,
 }
 
 export type TempOptions = typeof defaultTempOptions;

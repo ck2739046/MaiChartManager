@@ -4,6 +4,7 @@ using MaiChartManager.Utils;
 using MaiLib;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualBasic.FileIO;
+using NAudio.Lame;
 using SimaiSharp;
 using Vanara.Windows.Forms;
 using Xabe.FFmpeg;
@@ -21,12 +22,11 @@ public class MusicTransferController(StaticSettings settings, ILogger<MusicTrans
     [Route("/MaiChartManagerServlet/[action]Api")]
     public void RequestCopyTo(RequestCopyToRequest request)
     {
-        if (AppMain.BrowserWin is null) return;
         var dialog = new FolderBrowserDialog
         {
-            Description = "请选择目标位置"
+            Description = Locale.SelectTargetLocation
         };
-        if (AppMain.BrowserWin.Invoke(() => dialog.ShowDialog(AppMain.BrowserWin)) != DialogResult.OK) return;
+        if (WinUtils.ShowDialog(dialog) != DialogResult.OK) return;
         var dest = dialog.SelectedPath;
         logger.LogInformation("CopyTo: {dest}", dest);
 
@@ -36,12 +36,12 @@ public class MusicTransferController(StaticSettings settings, ILogger<MusicTrans
             progress = new ShellProgressDialog()
             {
                 AutoTimeEstimation = false,
-                Title = "正在导出…",
-                Description = $"正在导出 {request.music.Length} 首乐曲…",
-                CancelMessage = "正在取消…",
+                Title = Locale.Exporting,
+                Description = string.Format(Locale.ExportingMultipleMusic, request.music.Length),
+                CancelMessage = Locale.Cancelling,
                 HideTimeRemaining = true,
             };
-            progress.Start(AppMain.BrowserWin);
+            progress.Start(AppMain.BrowserWin!);
             progress.UpdateProgress(0, (ulong)request.music.Length);
         }
 
@@ -354,12 +354,6 @@ public class MusicTransferController(StaticSettings settings, ILogger<MusicTrans
         await maidataStream.WriteAsync(Encoding.UTF8.GetBytes(simaiFile.ToString()));
         maidataStream.Close();
 
-
-        var soundEntry = zipArchive.CreateEntry("track.mp3");
-        await using var soundStream = soundEntry.Open();
-        AudioConvert.ConvertWavPathToMp3Stream(await AudioConvert.GetCachedWavPath(id), soundStream);
-        soundStream.Close();
-
         // copy jacket
         var img = music.GetMusicJacketPngData();
         if (img is not null)
@@ -372,28 +366,34 @@ public class MusicTransferController(StaticSettings settings, ILogger<MusicTrans
             imageStream.Close();
         }
 
+        var soundEntry = zipArchive.CreateEntry("track.mp3");
+        await using var soundStream = soundEntry.Open();
+        var tag = new ID3TagData
+        {
+            Title = music.Name,
+            Artist = music.Artist,
+            Album = genre?.GenreName,
+            Track = music.Id.ToString(),
+            Comment = version?.GenreName,
+            AlbumArt = img,
+        };
+        AudioConvert.ConvertWavPathToMp3Stream(await AudioConvert.GetCachedWavPath(id), soundStream, tag);
+        soundStream.Close();
+
         if (!ignoreVideo && StaticSettings.MovieDataMap.TryGetValue(music.NonDxId, out var movieUsmPath))
         {
             string? pvMp4Path = null;
-            if (Path.GetExtension(movieUsmPath).Equals(".dat", StringComparison.InvariantCultureIgnoreCase))
+            var ext = Path.GetExtension(movieUsmPath).ToLowerInvariant();
+
+            if (ext == ".dat" || ext == ".usm")
             {
                 var tmpDir = Directory.CreateTempSubdirectory();
                 logger.LogInformation("Temp dir: {tmpDir}", tmpDir.FullName);
-                var movieUsm = Path.Combine(tmpDir.FullName, "movie.usm");
-                FileSystem.CopyFile(movieUsmPath, movieUsm, UIOption.OnlyErrorDialogs);
-                WannaCRI.WannaCRI.UnpackUsm(movieUsm, Path.Combine(tmpDir.FullName, "output"));
-                var outputIvfFile = Directory.EnumerateFiles(Path.Combine(tmpDir.FullName, @"output\movie.usm\videos")).FirstOrDefault();
-                if (outputIvfFile is not null)
-                {
-                    pvMp4Path = Path.Combine(tmpDir.FullName, "pv.mp4");
-                    await FFmpeg.Conversions.New()
-                        .AddParameter("-i " + outputIvfFile.Escape())
-                        .AddParameter("-c:v copy")
-                        .SetOutput(pvMp4Path)
-                        .Start();
-                }
+                pvMp4Path = Path.Combine(tmpDir.FullName, "pv.mp4");
+
+                await VideoConvert.ConvertUsmToMp4(movieUsmPath, pvMp4Path);
             }
-            else if (Path.GetExtension(movieUsmPath).Equals(".mp4", StringComparison.InvariantCultureIgnoreCase))
+            else if (ext == ".mp4")
             {
                 pvMp4Path = movieUsmPath;
             }
