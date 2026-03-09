@@ -1,0 +1,31 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Crack" />
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+  </Configurations>
+  <Project Path="MaiChartManager/MaiChartManager.csproj" />
+  <Project Path="MaiChartManager.CLI/MaiChartManager.CLI.csproj" />
+  <Project Path="MaiChartManager.GenClient/MaiChartManager.GenClient.csproj" />
+  <Project Path="AquaMai/AquaMai.Config.Interfaces/AquaMai.Config.Interfaces.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="AquaMai/AquaMai.Config.HeadlessLoader/AquaMai.Config.HeadlessLoader.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="MaiLib/MaiLib.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="SimaiSharp/SimaiSharp/SimaiSharp.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="SonicAudioTools/Source/SonicAudioLib/SonicAudioLib.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="XV2-Tools/LB_Common/LB_Common.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+  <Project Path="XV2-Tools/Xv2CoreLib/Xv2CoreLib.csproj">
+    <BuildType Solution="Crack|*" Project="Release" />
+  </Project>
+</Solution>

@@ -15,7 +15,7 @@ public class VideoConvertToolController(ILogger<VideoConvertToolController> logg
     }
 
     [HttpPost]
-    public async Task VideoConvertTool([FromQuery] bool noScale, [FromQuery] bool yuv420p)
+    public async Task VideoConvertTool()
     {
         Response.Headers.Append("Content-Type", "text/event-stream");
 
@@ -64,8 +64,8 @@ public class VideoConvertToolController(ILogger<VideoConvertToolController> logg
                 await VideoConvert.ConvertVideoToUsm(
                     inputFile,
                     outputDatPath,
-                    noScale,
-                    yuv420p,
+                    noScale: StaticSettings.Config.NoScale,
+                    yuv420p: StaticSettings.Config.Yuv420p,
                     async percent =>
                     {
                         await Response.WriteAsync($"event: {VideoConvertEventType.Progress}\ndata: {percent}\n\n");

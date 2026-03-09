@@ -15,10 +15,19 @@ const localeMessages: Record<string, any> = {
   en,
 };
 
+// 根据浏览器语言自动匹配
+const detectLocale = (): Locale => {
+  const lang = navigator.language;
+  if (lang.startsWith('zh')) {
+    return lang.includes('TW') || lang.includes('HK') || lang.includes('Hant') ? 'zh-TW' : 'zh';
+  }
+  return 'en';
+};
+
 // 创建 i18n 实例，初始语言先设为 zh，会在应用启动后从后端获取
 const i18n = createI18n({
   legacy: false, // 使用 Composition API
-  locale: 'en', // 默认语言，会被后端设置覆盖
+  locale: detectLocale(),
   fallbackLocale: 'en',
   messages: localeMessages,
   globalInjection: true, // 全局注入 $t

@@ -16,6 +16,9 @@
         <PublishDir>..\Packaging\Pack</PublishDir>
         <Configurations>Debug;Release;Crack</Configurations>
         <Platforms>AnyCPU</Platforms>
+        <CETCompat>false</CETCompat>
+        <ApplicationIcon>icon.ico</ApplicationIcon>
+        <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Crack|x64' ">

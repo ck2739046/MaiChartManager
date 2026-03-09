@@ -49,6 +49,9 @@ try
             .WithExample("makeacb", "audio.wav")
             .WithExample("makeacb", "audio.mp3", "-O", "output.acb")
             .WithExample("makeacb", "audio1.wav", "audio2.mp3", "--padding", "0.5");
+
+        config.AddCommand<DebugCommand>("debug")
+            .WithDescription("以控制台模式启动主程序，用于查看日志输出");
     });
 
     return await app.RunAsync(args);

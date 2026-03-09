@@ -103,7 +103,7 @@ public class AssetDirController(StaticSettings settings, ILogger<AssetDirControl
     }
 
     [HttpPost]
-    public void RequestLocalImportDir()
+    public async Task RequestLocalImportDir()
     {
         var dialog = new FolderBrowserDialog
         {
@@ -133,7 +133,7 @@ public class AssetDirController(StaticSettings settings, ILogger<AssetDirControl
         var dest = Path.Combine(StaticSettings.StreamingAssets, destName);
         logger.LogInformation("Src: {src} Dest: {dest}", src, dest);
         FileSystem.CopyDirectory(src, dest, UIOption.AllDialogs);
-        settings.RescanAll();
+        await settings.RescanAll();
     }
 
     public record UploadAssetDirResult(string DirName);
@@ -181,7 +181,7 @@ public class AssetDirController(StaticSettings settings, ILogger<AssetDirControl
             section = await reader.ReadNextSectionAsync();
         }
 
-        settings.RescanAll();
+        await settings.RescanAll();
 
         return new UploadAssetDirResult(destName);
     }

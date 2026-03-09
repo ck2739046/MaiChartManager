@@ -1,110 +1,87 @@
 import { defineComponent, onMounted, ref } from 'vue';
-import { NButton, NFlex, NScrollbar, useDialog, useNotification } from "naive-ui";
-import MusicList from "@/components/MusicList";
-import GenreVersionManager from "@/components/GenreVersionManager";
-import { globalCapture, selectedADir, selectedMusic, updateAddVersionList, updateAll, updateAssetDirs, updateGenreList, updateMusicList, updateVersion, version } from "@/store/refs";
-import MusicEdit from "@/components/MusicEdit";
-import MusicSelectedTopRightToolbar from "@/components/MusicSelectedTopRightToolbar";
-import ModManager from "@/components/ModManager";
-import VersionInfo from "@/components/VersionInfo";
-import { captureException } from "@sentry/vue";
-import AssetDirsManager from "@/components/AssetDirsManager";
-import ImportCreateChartButton from "@/components/ImportCreateChartButton";
-import { HardwareAccelerationStatus, LicenseStatus } from "@/client/apiGen";
-import CopyToButton from "@/components/CopyToButton";
-import TransitionOpacity from '@/components/TransitionOpacity';
-import Tools from '@/components/Tools';
+import { showTransactionalDialog } from '@munet/ui';
+import GenreVersionManager from './GenreVersionManager';
+import { globalCapture, updateAll, updateVersion, version, assetDirs, selectedADir, sidebarActive } from '@/store/refs';
+import ModManager from '@/views/ModManager';
+import { captureException } from '@sentry/vue';
+import { HardwareAccelerationStatus, LicenseStatus } from '@/client/apiGen';
 import { useI18n } from 'vue-i18n';
 import DragDropDispatcher, { mainDivRef } from '@/components/DragDropDispatcher';
+import Sidebar, { SidebarItem } from '@/components/Sidebar';
+import BatchActionButton from '@/views/BatchAction';
+import Charts from './Charts';
+import Tools from './Tools';
+import Settings from './Settings';
+import Splash from '@/components/Splash';
+import { ensureBackendUrl } from '@/utils/ensureBackendUrl';
+import ChangelogModal from '@/components/ChangelogModal';
 
 export default defineComponent({
   setup() {
-    const notification = useNotification();
-    const dialog = useDialog();
     const { t } = useI18n();
+    const loaded = ref(false);
 
     onMounted(async () => {
-      document.title = `MaiChartManager (${location.host})`
-      addEventListener("unhandledrejection", (event) => {
-        console.log(event)
+      document.title = `MaiChartManager (${location.host})`;
+      addEventListener('unhandledrejection', (event) => {
+        console.log(event);
         captureException(event.reason?.error || event.reason, {
-          tags: {
-            context: 'unhandledrejection'
-          }
-        })
+          tags: { context: 'unhandledrejection' },
+        });
       });
 
       if (window.showDirectoryPicker === undefined) {
         const showError = () => {
-          dialog.error({
-            title: t('error.browserUnsupported.title'),
-            content: t('error.browserUnsupported.content'),
-            positiveText: t('error.browserUnsupported.confirm'),
-          })
-        }
+          showTransactionalDialog(
+            t('error.browserUnsupported.title'),
+            t('error.browserUnsupported.content'),
+            [{ text: t('error.browserUnsupported.confirm'), action: true }],
+          );
+        };
         window.showDirectoryPicker = () => {
-          showError()
-          throw new DOMException(t('error.browserUnsupported.title'), 'AbortError')
-        }
-        showError()
+          showError();
+          throw new DOMException(t('error.browserUnsupported.title'), 'AbortError');
+        };
+        showError();
       }
 
+      await ensureBackendUrl();
       updateVersion().then(() => {
         if (version.value?.license === LicenseStatus.Pending || version.value?.hardwareAcceleration === HardwareAccelerationStatus.Pending) {
-          setTimeout(updateVersion, 2000)
+          setTimeout(updateVersion, 2000);
         }
-      })
+      });
       try {
         await updateAll();
+        if (assetDirs.value.length > 0) {
+          const exists = assetDirs.value.some(d => d.dirName === selectedADir.value)
+          if (!exists) {
+            selectedADir.value = assetDirs.value[assetDirs.value.length - 1].dirName!
+          }
+        }
+        loaded.value = true;
       } catch (err) {
-        globalCapture(err, t('error.initFailed'))
+        loaded.value = true;
+        globalCapture(err, t('error.initFailed'));
       }
-    })
+    });
 
-    const mobileShowMenu = ref(false);
 
-    return () => <div class="flex justify-center" ref={mainDivRef}>
-      <DragDropDispatcher />
-      <div class="grid cols-[40em_1fr] w-[min(100rem,100%)] max-[1440px]:cols-1">
-        <div class={[
-          "p-xy h-100dvh",
-          "max-[1440px]:absolute max-[1440px]:left-0 max-[1440px]:w-40em max-[1440px]:max-w-100dvw  z-10 transition-transform duration-300",
-          "max-[1440px]:bg-white max-[1440px]:border-r-solid max-[1440px]:border-r-1 max-[1440px]:border-r-gray-200",
-          mobileShowMenu.value ? "max-[1440px]:translate-x-0" : "max-[1440px]:translate-x-[-100%]"
-        ]}>
-          <MusicList toggleMenu={() => mobileShowMenu.value = false} />
+    return () => (
+      <div class="" ref={mainDivRef as any}>
+        <DragDropDispatcher />
+        <Splash show={!loaded.value} />
+        <ChangelogModal ready={loaded.value} />
+        <div class={['grid cols-1 pb-14 md:pb-0 md:cols-[auto_1fr]']}>
+          <Sidebar v-model:active={sidebarActive.value} />
+          {sidebarActive.value === 'charts' && <Charts />}
+          {sidebarActive.value === 'mods' && <ModManager />}
+          {sidebarActive.value === 'genres' && <GenreVersionManager />}
+          {sidebarActive.value === 'batch' && <BatchActionButton />}
+          {sidebarActive.value === 'tools' && <Tools />}
+          {sidebarActive.value === 'settings' && <Settings />}
         </div>
-        <TransitionOpacity>
-          {mobileShowMenu.value && <div class={["min-[1440px]:hidden absolute-full z-5 bg-white/70 backdrop-blur-sm"]} onClick={() => mobileShowMenu.value = false} />}
-        </TransitionOpacity>
-        <NFlex vertical class="p-xy h-100dvh" size="large" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 16px, rgba(255, 255, 255, 0.1) calc(100% - 16px), transparent 100%)' }}>
-          <NFlex class="shrink-0" align="center">
-            <NButton secondary onClick={() => mobileShowMenu.value = true} class="min-[1440px]:hidden">
-              <span class="i-ic-baseline-menu text-lg" />
-            </NButton>
-            <AssetDirsManager />
-            {selectedADir.value !== 'A000' && <>
-              <GenreVersionManager />
-            </>}
-            <ModManager />
-
-            <div class="grow-1" />
-
-            {!!selectedMusic.value && <CopyToButton />}
-            {selectedADir.value === 'A000' ?
-              t('assetDir.selectNonA000') :
-              <>
-                <MusicSelectedTopRightToolbar />
-                <ImportCreateChartButton />
-              </>}
-            <Tools />
-            <VersionInfo />
-          </NFlex>
-          <NScrollbar class="grow-1">
-            <MusicEdit />
-          </NScrollbar>
-        </NFlex>
       </div>
-    </div>;
+    );
   },
 });

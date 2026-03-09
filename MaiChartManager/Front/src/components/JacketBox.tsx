@@ -1,7 +1,7 @@
 import { computed, defineComponent, PropType, ref } from "vue";
 import noJacket from "@/assets/noJacket.webp";
 import api, { getUrl } from "@/client/api";
-import { useDialog } from "naive-ui";
+import { showTransactionalDialog } from "@munet/ui";
 import { globalCapture, selectedADir, selectedMusic } from "@/store/refs";
 import { MusicXmlWithABJacket } from "@/client/apiGen";
 import { useI18n } from 'vue-i18n';
@@ -15,7 +15,6 @@ export default defineComponent({
     upload: { type: Boolean, default: true }
   },
   setup(props) {
-    const dialog = useDialog();
     const updateTime = ref(0)
     const jacketUrl = computed(() => props.info.hasJacket ?
       getUrl(`GetJacketApi/${props.info.assetDir}/${props.info.id}?${updateTime.value}`) : noJacket)
@@ -46,11 +45,11 @@ export default defineComponent({
           const res = await api.SetMusicJacket(props.info.id!, selectedADir.value, { file });
           if (res.error) {
             const error = res.error as any;
-            dialog.warning({ title: t('jacket.setFailed'), content: error.message || error });
+            await showTransactionalDialog(t('jacket.setFailed'), error.message || error, undefined, true);
             return;
           }
           if (res.data) {
-            dialog.info({ title: t('jacket.setFailed'), content: res.data })
+            await showTransactionalDialog(t('jacket.setFailed'), res.data, undefined, true);
             return;
           }
           updateTime.value = Date.now()

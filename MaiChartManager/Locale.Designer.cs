@@ -423,6 +423,15 @@ namespace MaiChartManager {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to File upload failed.
+        /// </summary>
+        internal static string FileUploadFailed {
+            get {
+                return ResourceManager.GetString("FileUploadFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Game directory not specified.
         /// </summary>
         internal static string GameDirNotSpecified {
@@ -604,6 +613,15 @@ namespace MaiChartManager {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Replacing individual difficulty charts is not supported when using maidata. All difficulties will be replaced at once..
+        /// </summary>
+        internal static string MaidataReplaceAllOnly {
+            get {
+                return ResourceManager.GetString("MaidataReplaceAllOnly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Music with this ID already exists in current directory.
         /// </summary>
         internal static string MusicIdExists {
@@ -627,6 +645,15 @@ namespace MaiChartManager {
         internal static string MusicNoTitle {
             get {
                 return ResourceManager.GetString("MusicNoTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Caution! This &quot;Replace Chart&quot; function should only be used when modifying the note content of the existing chart, while the audio remains unchanged, the &amp;first offset remains unchanged, and the timing of the first note remains unchanged. Otherwise, you will need to delete the entire chart and re-import it..
+        /// </summary>
+        internal static string NotesReplacementWarning {
+            get {
+                return ResourceManager.GetString("NotesReplacementWarning", resourceCulture);
             }
         }
         
@@ -726,6 +753,15 @@ namespace MaiChartManager {
         internal static string UnknownError {
             get {
                 return ResourceManager.GetString("UnknownError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unsupported file format.
+        /// </summary>
+        internal static string UnsupportedChartFormat {
+            get {
+                return ResourceManager.GetString("UnsupportedChartFormat", resourceCulture);
             }
         }
         

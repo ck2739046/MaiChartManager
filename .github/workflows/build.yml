@@ -8,11 +8,42 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        package_json_file: MaiChartManager/Front/package.json
+
+    - name: Install and Build
+      working-directory: MaiChartManager/Front
+      run: |
+        pnpm install
+        pnpm build
+
+    - name: Upload wwwroot
+      uses: actions/upload-artifact@v4
+      with:
+        name: wwwroot
+        path: MaiChartManager/wwwroot
+
   build:
     name: Build
     runs-on: self-hosted
+    needs: build-frontend
     
     steps:
+    - run: git config --global core.longPaths true
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -42,14 +73,11 @@ jobs:
             dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org
         }
 
-    - name: Install Frontend Dependencies
-      shell: powershell
-      run: |
-        corepack enable
-        Push-Location MaiChartManager\Front
-        pnpm install
-        Pop-Location
-
+    - name: Download wwwroot
+      uses: actions/download-artifact@v4
+      with:
+        name: wwwroot
+        path: MaiChartManager/wwwroot
 
     - name: Build
       shell: powershell
@@ -97,3 +125,8 @@ jobs:
         
         # 3. 执行更新脚本
         & "D:\sign\mcm-canary-update.ps1" -Version $version
+
+    - name: Delete wwwroot artifact
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: wwwroot

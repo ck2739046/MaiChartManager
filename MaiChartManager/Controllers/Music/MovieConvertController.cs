@@ -16,7 +16,7 @@ public class MovieConvertController(ILogger<MovieConvertController> logger) : Co
 
     [HttpPut]
     [DisableRequestSizeLimit]
-    public async Task SetMovie(int id, [FromForm] double padding, IFormFile file, [FromForm] bool noScale, [FromForm] bool h264, [FromForm] bool yuv420p, string assetDir)
+    public async Task SetMovie(int id, [FromForm] double padding, IFormFile file, string assetDir)
     {
         id %= 10000;
 
@@ -46,16 +46,16 @@ public class MovieConvertController(ILogger<MovieConvertController> logger) : Co
             }
 
             // 目标路径
-            var targetPath = Path.Combine(StaticSettings.StreamingAssets, assetDir, $@"MovieData\{id:000000}.{(h264 ? "mp4" : "dat")}");
+            var targetPath = Path.Combine(StaticSettings.StreamingAssets, assetDir, $@"MovieData\{id:000000}.{(StaticSettings.Config.MovieCodec == MovieCodec.ForceH264 ? "mp4" : "dat")}");
 
             // 使用工具类转换视频
             await VideoConvert.ConvertVideo(new VideoConvert.VideoConvertOptions
             {
                 InputPath = srcFilePath,
                 OutputPath = targetPath,
-                NoScale = noScale,
-                UseH264 = h264,
-                UseYuv420p = yuv420p,
+                NoScale = StaticSettings.Config.NoScale,
+                UseH264 = StaticSettings.Config.MovieCodec == MovieCodec.ForceH264,
+                UseYuv420p = StaticSettings.Config.Yuv420p,
                 Padding = padding,
                 ContentType = file.ContentType,
                 OnProgress = async percent =>

@@ -4,7 +4,7 @@ import path from "node:path";
 
 /* NOTE: all fields are optional expect one of `input`, `url`, `spec` */
 generateApi({
-  name: "apiGen.ts",
+  fileName: "apiGen.ts",
   output: path.resolve("src/client"),
   url: "http://localhost:5181/swagger/v1/swagger.json",
   templates: path.resolve("./api-templates"),
@@ -14,7 +14,7 @@ generateApi({
 })
 
 generateApi({
-  name: "aquaMaiVersionConfigApiGen.ts",
+  fileName: "aquaMaiVersionConfigApiGen.ts",
   output: path.resolve("src/client"),
   url: "https://aquamai-version-config.init.ink/openapi.json",
   templates: path.resolve("./api-templates"),

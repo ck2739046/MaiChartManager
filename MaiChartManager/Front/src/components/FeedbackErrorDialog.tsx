@@ -1,12 +1,11 @@
 import { computed, defineComponent, ref, watch } from "vue";
-import { NButton, NFlex, NFormItem, NInput, NModal, useMessage } from "naive-ui";
+import { Modal, addToast } from "@munet/ui";
 import { error, errorContext, errorId } from "@/store/refs";
 import { captureFeedback } from "@sentry/vue";
 import { useI18n } from 'vue-i18n';
 
 export default defineComponent({
   setup(props) {
-    const nMessage = useMessage();
     const { t } = useI18n();
 
     const message = computed(() => {
@@ -36,24 +35,20 @@ export default defineComponent({
         associatedEventId: errorId.value,
         message: userInput.value || t('feedback.none'),
       })
-      nMessage.success(t('feedback.thanks'));
+      addToast({message: t('feedback.thanks'), type: 'success'});
       error.value = null;
     }
 
-    return () => <NModal
-      preset="card"
-      class="w-[min(50vw,60em)]"
+    return () => <Modal
+      width="min(50vw,60em)"
       title={t('error.title') + '！'}
       show={!!error.value}
       onUpdateShow={() => error.value = null}
     >
-      {{
-        default: () => <NFlex vertical size="large">
-          <div class="text-lg">{errorContext.value}</div>
-          {message.value}
-          {/*<NInput v-model:value={userInput.value} class="w-full" type="textarea" placeholder="可以提供一下相关背景和上下文吗？比如说你的游戏或者乐曲有没有什么特别之处"/>*/}
-        </NFlex>
-      }}
-    </NModal>;
+      <div class="flex flex-col gap-3">
+        <div class="text-lg">{errorContext.value}</div>
+        {message.value}
+      </div>
+    </Modal>;
   }
 })

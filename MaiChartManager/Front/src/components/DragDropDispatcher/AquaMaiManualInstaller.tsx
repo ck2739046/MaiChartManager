@@ -2,9 +2,9 @@ import api from '@/client/api';
 import { CheckAquaMaiFileResult, PubKeyId, VerifyStatus } from '@/client/apiGen';
 import { t } from '@/locales';
 import { globalCapture, updateModInfo } from '@/store/refs';
-import { NButton, NFlex, NModal, NTime, useMessage } from 'naive-ui';
+import { Button, Modal, DateFormat, addToast } from '@munet/ui';
 import { defineComponent, PropType, ref, computed, watch } from 'vue';
-import { updateAquaMaiConfig } from '../ModManager/ConfigEditor';
+import { updateAquaMaiConfig } from '@/views/ModManager/refs';
 
 const currentFile = ref<File>();
 const checkResult = ref<CheckAquaMaiFileResult>();
@@ -27,14 +27,13 @@ export default defineComponent({
   // props: {
   // },
   setup(props, { emit }) {
-    const message = useMessage();
 
     const installAquaMai = async () => {
       if (!currentFile.value) return;
       try {
         await api.InstallAquaMaiFile({ file: currentFile.value });
         currentFile.value = undefined;
-        message.success(t('mod.manualInstall.installSuccess'));
+        addToast({message: t('mod.manualInstall.installSuccess'), type: 'success'});
         await updateModInfo();
         await updateAquaMaiConfig();
       }
@@ -45,18 +44,16 @@ export default defineComponent({
 
 
     return () => <>
-      <NModal
-        preset="card"
-        class="w-[min(90vw,50em)]"
+      <Modal
+        width="min(90vw,50em)"
         title={t('mod.manualInstall.invalidAquaMaiFile')}
         show={checkResult.value?.isValid === false}
         onUpdateShow={() => checkResult.value = undefined}
       >
         {t('mod.manualInstall.invalidAquaMaiFileMessage')}
-      </NModal>
-      <NModal
-        preset="card"
-        class="w-[min(90vw,50em)]"
+      </Modal>
+      <Modal
+        width="min(90vw,50em)"
         title={t('mod.manualInstall.confirmInstallTitle')}
         show={currentFile.value !== undefined}
         onUpdateShow={() => currentFile.value = undefined}
@@ -78,13 +75,13 @@ export default defineComponent({
               <div class="text-red-6">{t('mod.signature.invalid')}</div>}
           </div>
           <div>{t('mod.manualInstall.version')}: v{checkResult.value?.version}</div>
-          <div>{t('mod.manualInstall.buildDate')}: {checkResult.value?.buildDate ? <NTime time={new Date(checkResult.value.buildDate)} format="yyyy-MM-dd HH:mm:ss" /> : 'N/A'}</div>
+          <div>{t('mod.manualInstall.buildDate')}: {checkResult.value?.buildDate ? <DateFormat value={new Date(checkResult.value.buildDate)} /> : 'N/A'}</div>
         </div>,
-        footer: () => <NFlex justify="end">
-          <NButton onClick={() => currentFile.value = undefined}>{t('common.cancel')}</NButton>
-          <NButton onClick={installAquaMai} type={checkResult.value?.signature?.status === VerifyStatus.Valid ? "primary" : "warning"}>{t('common.confirm')}</NButton>
-        </NFlex>
-      }}</NModal>
+        actions: () => <>
+          <Button class="w-0 grow" onClick={() => currentFile.value = undefined}>{t('common.cancel')}</Button>
+          <Button class="w-0 grow" onClick={installAquaMai} variant={checkResult.value?.signature?.status === VerifyStatus.Valid ? "primary" : "secondary"}>{t('common.confirm')}</Button>
+        </>
+      }}</Modal>
     </>;
   },
 });

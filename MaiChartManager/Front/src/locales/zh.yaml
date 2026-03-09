@@ -72,8 +72,11 @@ music:
     filterExpert: 红
     filterReMaster: 白
     filterAdvanced: 黄
+    sortById: ID
+    sortByName: 名称
+    sortByVersion: 更新时间
   edit:
-    name: 歌曲名称
+    name: 名称
     artist: 作者
     bpm: BPM
     genre: 流派
@@ -82,12 +85,14 @@ music:
     addVersion: 追加版本
     utageType: 宴谱种类
     utageComment: 宴谱备注
+    sortName: 游戏内排序名
+    sortNameTips: 只能包含数字、大写字母、片假名（如有不合要求的字符，会被自动替换）
     jacket: 封面
     audioPreview: 试听
     editPreview: 编辑预览
     movie: 影片
     charts: 谱面
-    chartEnable: 启用
+    chartEnable: 启用此难度
     chartAuthor: 作者
     chartLevel: 显示等级
     chartConstant: 定数
@@ -126,6 +131,8 @@ music:
     replaceChartConfirm: 确认要替换 {level} 谱面吗？
     replaceChartFailed: 替换谱面失败
     replaceChartSuccess: 替换谱面成功
+    notValidChartFile: 谱面文件必须是.ma2或maidata.txt
+    replaceChartShiftModeHint: 请确保这里选择的延迟调整模式和导入谱面时使用的一致，否则会导致音符位置不正确！
   batch:
     title: 批量操作
     batchAndSearch: 批量操作与搜索
@@ -209,6 +216,7 @@ chart:
     option:
       advancedOptions: 高级选项
       shiftMode: 延迟调整模式
+      shiftModeLocked: 延迟调整模式已被锁定为最初导入谱面时所使用的模式，无法修改
       shiftByBar: 按小节
       shiftByBarDesc: |-
         如果谱面前面的休止符长度小于一小节，那就在前面加上一小节的空白
@@ -223,14 +231,8 @@ chart:
       shiftNoMoveDesc: |-
         完全不修改谱面，从音频中删除 &first 的长度（如果有）
         可能会导致第一个音符出现的时机比较奇怪，比如说刚开始就有音符
-      ignoreLevel: 忽略定数，不参与 B50 计算
-      disableBga: 有 BGA 也不要导入
-      noScale: 不要缩放 BGA 到 1080 宽度，此选项会记住
-      pvCodec: PV 编码
-      yuv420p: 转换 USM 时使用 YUV420P 颜色空间
-      codecPreferH264: 优先 H264
-      codecForceH264: 强制 H264
-      codecForceVP9: 强制 VP9 USM
+      codecForceH264: H264
+      codecForceVP9: VP9 USM
     assignId: 为新导入的歌曲指定 ID
     currentProcessing: 当前正在处理的项目
     folderHint: 包含以下文件的文件夹，或者，一个包含一些这样的文件夹的文件夹
@@ -267,8 +269,6 @@ mod:
   other: 其他
   needEnableOption: 需要开启此选项
   unsupportedType: '不支持的类型: {type}'
-  notInstalledTitle: 没有安装 AquaMai
-  notInstalledWarningMessage: 没有安装 MelonLoader 或者 AquaMai，在游戏中将无法加载歌曲封面。请点击 Mod 管理来安装
   dontShowAgain: 不再提示
   versionNotFound: 未找到对应版本
   installFailed: 安装 AquaMai 失败，文件可能被占用了？
@@ -278,15 +278,18 @@ mod:
   versionTooLow: AquaMai 版本过低，请更新到 1.6.0 以上
   installed: 已安装
   installedVersion: 已安装
-  availableVersion: 可安装
+  availableVersion: 最新
+  loaded: 已加载
   killGameProcess: 关闭游戏进程
   needInstallOrUpdate: AquaMai 未安装或需要更新
-  adxHid:
+  ioKeyMap:
     disabled: 禁用
+    select: 选择
     select1P: 1P 选择
     select2P: 2P 选择
     service: 服务
     test: 测试
+  adxHid:
     conflictDetected: 检测到冲突的 Mod
     oneClickDelete: 一键删除
     noConflict: 没有检测到冲突
@@ -298,7 +301,6 @@ mod:
     button3Desc: 向下的三角键
     button4: 按键 4
     button4Desc: 最下方的圆形按键
-    select: 选择
   touchSensitivity:
     applyPresetToGlobal: 应用预设到全局
     settingsFor: '{area} 的灵敏度设置'
@@ -317,19 +319,30 @@ mod:
     button2P: 2P 按键 {index}
     select1P: 1P 选择键
     select2P: 2P 选择键
+    disableIO4: 禁用 IO4 输入
+    disableIO4Tip: 开关打开为禁用对应输入。在禁用 IO4 输入后，你的兼容 IO4 板或 segatools IO4 模拟将被忽略。
+    disableIO4System: 系统按键（测试、服务）
+    disable1P: 禁用 1P
+    enable1P: 启用 1P
+    disable2P: 禁用 2P
+    enable2P: 启用 2P
+    disableSystem: 禁用系统按键
+    enableSystem: 启用系统按键
   soundChannel:
-    P1SpeakerLeft: 1P 外放左
-    P1SpeakerRight: 1P 外放右
-    P1HeadphoneLeft: 1P 耳机左
-    P1HeadphoneRight: 1P 耳机右
-    P2SpeakerLeft: 2P 外放左
-    P2SpeakerRight: 2P 外放右
-    P2HeadphoneLeft: 2P 耳机左
-    P2HeadphoneRight: 2P 耳机右
+    P1SpeakerLeft: 前喇叭 左
+    P1SpeakerRight: 前喇叭 右
+    P1HeadphoneLeft: 中置重低音 左
+    P1HeadphoneRight: 中置重低音 右
+    P2SpeakerLeft: 后喇叭 左
+    P2SpeakerRight: 后喇叭 右
+    P2HeadphoneLeft: 侧喇叭 左
+    P2HeadphoneRight: 侧喇叭 右
     None: 禁用
   judgeAccuracyInfo:
     author: 作者：
     viewDoc: 查看说明文件
+  trackCamouflage:
+    viewDoc: 查看配置说明
   commentOverrides:
     Fancy_GamePlay_JudgeDisplay4B: |
       更精细的判定表示
@@ -338,7 +351,7 @@ mod:
     GameSettings_TouchSensitivity: |
       使用自定义的触摸灵敏度
       这里启用之后 Test 里的设置就不再起作用了，不过还是可以使用 Test 测试（使用测试需要关闭 1P 模式）
-      如果你的手台有对应的上位机，建议使用上位机调整
+      如果你的手台有对应的上位机，建议关闭本选项并使用上位机调整
   configCorrupted: AquaMai 配置文件损坏
   configCorruptedMessage: 请手动检查 AquaMai.toml 并尝试修复可能的问题
   resetToDefault: 重置回默认设置
@@ -371,6 +384,57 @@ mod:
     oneClickInstall: 一键安装
     installed: 已正确安装
     installFailed: 安装 Maimoller 依赖库时出现错误
+    button1: 按钮 1（三角形）
+    button2: 按钮 2（圆形）
+    button3: 按钮 3（圆形）
+    button4: 按钮 4（圆形）
+    Touch1p: 1P 触屏
+    Touch2p: 2P 触屏
+    Button1p: 1P 按键
+    Button2p: 2P 按键
+    Led1p: 1P 灯光
+    Led2p: 2P 灯光
+    Touch: 触屏
+    Button: 按键
+    Led: 灯光
+    P1: 启用 1P
+    P2: 启用 2P
+    tip: 如果混用 Maimoller 与其他协议，请对不是 Maimoller 的一侧禁用
+  on: 开
+  off: 关
+  enable: 启用
+  disable: 禁用
+  stableChannel: "稳定通道"
+  fastChannel: "快速通道"
+  mumod: "MuMod"
+  mumodDesc: "自动更新加载器"
+  mumodInstalled: "已安装"
+  mumodChannel: "更新通道"
+  mumodChannelSlow: "稳定"
+  mumodChannelFast: "快速"
+  cacheUpdating: "正在更新缓存..."
+  cacheFailed: "缓存更新失败"
+  conflict:
+    title: "检测到冲突"
+    message: "AquaMai 和 MuMod 同时存在，请选择保留哪一个"
+    deleteAquaMai: "删除 AquaMai"
+    deleteMuMod: "删除 MuMod"
+  pdx:
+    noDevice: "未检测到 PDX 设备"
+    deviceCount: "检测到 {count} 个 PDX 设备"
+    driverWinusb: "当前驱动: 独占模式"
+    driverDefault: "当前驱动: Windows 触摸模式"
+    switchToExclusive: "切换到独占模式"
+    switchToWintouch: "切换到 Windows 触摸模式"
+    switchSuccess: "驱动切换成功"
+    switchFailed: "驱动切换失败"
+    switchCancelled: "已取消权限请求"
+    refresh: "刷新设备状态"
+    unavailable: "PDX 驱动工具不可用"
+    selectDevice: "选择设备"
+    path1P: "1P 设备路径"
+    path2P: "2P 设备路径"
+    pathDesc: "USB 端口路径，例如 2.2。请使用配置工具中显示的路径。留空则使用第一个检测到的设备作为 1P"
 tools:
   title: 工具
   audioConvert: 音频转换（ACB + AWB）
@@ -380,10 +444,6 @@ tools:
   convertFailed: 转换失败
   videoConvertError: 视频转换出错
   videoOptions:
-    title: 视频转换选项
-    onlyForUsm: 以下选项仅对通用格式转换为 USM 生效
-    noScale: 不要缩放视频到 1080 宽度
-    useYuv420p: 使用 YUV420P 颜色空间
     processing: 还在处理，别急…
 error:
   title: 错误
@@ -399,6 +459,7 @@ error:
   feedbackError: 反馈错误
   file:
     notSelected: 未选择文件
+  unsupportedFileType: 不支持的文件类型
 message:
   notice: 提示
   saveSuccess: 保存成功
@@ -409,6 +470,7 @@ message:
   refreshing: 刷新中…
   refreshAll: 刷新全部
 copy:
+  copyAndExport: 复制与导出
   title: 复制到
   selectTarget: 选择目标目录
   changeId: 修改 ID
@@ -461,8 +523,75 @@ about:
   h264Encoder: H264 编码器
   premiumActive: 感谢你的支持，赞助版功能已启用！
   continueSupport: 如果还想继续赞助请点击
+  offlineActivation: 离线激活
+  enterActivationCode: 请输入激活码
+  activationCodeInvalid: 激活码无效
+  activationSuccess: 赞助版功能已启用，谢谢你！
+  updateAvailable: 有新版本可用 ({version})
+  viewChangelog: 查看更新日志
+  changelogTitle: 更新日志
+  updateHint: 前往 Microsoft Store 更新
 jacket:
   upload: 上传封面
   select: 选择封面
   setFailed: 设置失败
   replaceFailed: 替换图片失败
+sidebar:
+  refreshData: 刷新数据
+  charts: 谱面管理
+  mods: Mod 设置
+  batch: 批量操作
+  genres: 流派/版本管理
+  tools: 工具
+  settings: 设置
+  language: 语言
+settings:
+  title: 设置
+  appearance: 外观
+  themeHue: 主题色相
+  resetDefault: 重置默认
+  zoom: 界面缩放
+  zoomAuto: 自动
+  importOptions: 导入选项
+  ignoreLevel: 忽略定数，不参与 B50 计算
+  disableBga: 有 BGA 也不要导入
+  videoOptions: 视频选项
+  movieCodec: PV 编码
+  yuv420p: 转换 USM 时使用 YUV420P 颜色空间
+  noScale: 不要缩放视频到 1080 宽度
+  updateChannel: 更新通道
+  updateChannelSlow: 稳定
+  updateChannelCi: 快速
+  updateChannelDesc: 稳定通道会延迟数天推送，适合不想踩坑的用户
+  gameDirectory: 游戏目录
+  currentPath: 当前路径
+  changeDirectory: 更换目录
+  changingDirectory: 正在切换...
+  changeDirectoryFailed: 切换目录失败
+  switchMode: 切换工作模式
+  historyPath: 历史记录
+  deleteHistory: 删除
+  noHistory: 暂无历史记录
+oobe:
+  welcome: 欢迎
+  welcomeMessage: 欢迎使用 MaiChartManager
+  selectGameDir: 选择游戏目录
+  selectGameDirDesc: 请选择 maimai DX 的游戏目录
+  browse: 浏览...
+  selectedPath: 已选择
+  pathNotValid: 路径无效
+  selectMode: 选择模式
+  localMode: 本机模式
+  localModeDesc: 在本机上管理谱面
+  remoteMode: 远程模式
+  remoteModeDesc: 通过局域网访问
+  username: 用户名
+  password: 密码
+  enableAuth: 启用认证
+  complete: 完成
+  completing: 正在完成设置...
+  remoteReady: 远程访问已就绪
+  lanAddresses: 局域网地址
+  openMainUI: 打开主界面
+  initializingData: 正在初始化游戏数据...
+  startupOnBoot: 开机自启动

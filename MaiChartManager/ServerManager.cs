@@ -6,6 +6,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
 using System.Windows.Forms;
 using idunno.Authentication.Basic;
+using MaiChartManager.Controllers.Mod;
+using MaiChartManager.Services;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.FileProviders;
@@ -92,7 +96,7 @@ public static class ServerManager
         return port;
     }
 
-    public static void StartApp(bool export, Action? onStart = null)
+    public static void StartApp(bool export, Action<string>? onStart = null)
     {
         var builder = WebApplication.CreateBuilder();
 
@@ -110,7 +114,11 @@ public static class ServerManager
             });
 
         builder.Services
+            .AddHttpClient()
             .AddSingleton<StaticSettings>()
+            .AddSingleton<MaidataImportService>()
+            .AddSingleton<MuModService>()
+            .AddSingleton<ModConfigService>()
             .AddEndpointsApiExplorer()
             .AddSwaggerGen(options => { options.CustomSchemaIds(type => type.Name == "Config" ? type.FullName : type.Name); })
             .Configure<FormOptions>(x =>
@@ -132,6 +140,7 @@ public static class ServerManager
                 }
             )
             .AddControllers()
+            .AddApplicationPart(typeof(ServerManager).Assembly)
             .AddJsonOptions(options =>
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -185,7 +194,10 @@ public static class ServerManager
         app.Lifetime.ApplicationStarted.Register(() => { app.Services.GetService<StaticSettings>(); });
 
         if (onStart != null)
-            app.Lifetime.ApplicationStarted.Register(onStart);
+            app.Lifetime.ApplicationStarted.Register(() =>
+            {
+                onStart(GetLoopbackUrl() ?? throw new InvalidOperationException("Loopback URL is null"));
+            });
 
         app
             .UseExceptionHandler()
@@ -196,9 +208,19 @@ public static class ServerManager
         if (export)
             app.UseFileServer(new FileServerOptions
             {
-                FileProvider = new PhysicalFileProvider(Path.Combine(StaticSettings.exeDir, "wwwroot")),
+                FileProvider = new PhysicalFileProvider(StaticSettings.wwwroot),
             });
         app.MapControllers();
         Task.Run(app.Run);
+    }
+
+    public static string? GetLoopbackUrl()
+    {
+        var server = app?.Services.GetRequiredService<IServer>();
+        var serverAddressesFeature = server?.Features.Get<IServerAddressesFeature>();
+
+        if (serverAddressesFeature == null) return null;
+
+        return serverAddressesFeature.Addresses.First();
     }
 }

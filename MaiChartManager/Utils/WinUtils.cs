@@ -6,11 +6,12 @@ public static class WinUtils
 {
     public static void SetTaskbarProgress(ulong progress, ulong total = 100)
     {
-        if (AppMain.BrowserWin == null) return;
+        var win = AppMain.ActiveForm ?? AppMain.BrowserWin;
+        if (win == null) return;
         try
         {
-            TaskbarList.SetProgressState(AppMain.BrowserWin.Handle, TaskbarButtonProgressState.Normal);
-            TaskbarList.SetProgressValue(AppMain.BrowserWin.Handle, progress, total);
+            TaskbarList.SetProgressState(win.Handle, TaskbarButtonProgressState.Normal);
+            TaskbarList.SetProgressValue(win.Handle, progress, total);
         }
         catch
         {
@@ -20,10 +21,11 @@ public static class WinUtils
 
     public static void ClearTaskbarProgress()
     {
-        if (AppMain.BrowserWin == null) return;
+        var win = AppMain.ActiveForm ?? AppMain.BrowserWin;
+        if (win == null) return;
         try
         {
-            TaskbarList.SetProgressState(AppMain.BrowserWin.Handle, TaskbarButtonProgressState.None);
+            TaskbarList.SetProgressState(win.Handle, TaskbarButtonProgressState.None);
         }
         catch
         {
@@ -33,10 +35,11 @@ public static class WinUtils
 
     public static void SetTaskbarProgressIndeterminate()
     {
-        if (AppMain.BrowserWin == null) return;
+        var win = AppMain.ActiveForm ?? AppMain.BrowserWin;
+        if (win == null) return;
         try
         {
-            TaskbarList.SetProgressState(AppMain.BrowserWin.Handle, TaskbarButtonProgressState.Indeterminate);
+            TaskbarList.SetProgressState(win.Handle, TaskbarButtonProgressState.Indeterminate);
         }
         catch
         {
@@ -46,7 +49,8 @@ public static class WinUtils
 
     public static DialogResult ShowDialog(CommonDialog dialog)
     {
-        if (AppMain.BrowserWin == null) return DialogResult.Cancel;
-        return AppMain.BrowserWin.Invoke(() => dialog.ShowDialog(AppMain.BrowserWin));
+        var owner = AppMain.ActiveForm ?? AppMain.BrowserWin;
+        if (owner == null) return DialogResult.Cancel;
+        return owner.Invoke(() => dialog.ShowDialog(owner));
     }
 }

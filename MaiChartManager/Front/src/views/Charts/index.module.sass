@@ -1,0 +1,22 @@
+.enterActive, .leaveActive
+  transition: opacity 0.35s ease, transform 0.35s ease
+  position: absolute
+  inset: 0
+
+// musicList -> assetDirs: enter scales down, leave scales down
+.forwardEnterFrom
+  opacity: 0
+  transform: scale(1.04)
+
+.forwardLeaveTo
+  opacity: 0
+  transform: scale(0.96)
+
+// assetDirs -> musicList: enter scales up, leave scales up
+.backwardEnterFrom
+  opacity: 0
+  transform: scale(0.96)
+
+.backwardLeaveTo
+  opacity: 0
+  transform: scale(1.04)

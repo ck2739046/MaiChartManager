@@ -1,0 +1,25 @@
+.chromatic-hue-slider {
+  outline: none;
+  border-radius: 0.5rem;
+  appearance: none;
+  height: 2.5rem;
+  background: linear-gradient(to right, oklch(85% 0.2 0), oklch(85% 0.2 60), oklch(85% 0.2 120), oklch(85% 0.2 180), oklch(85% 0.2 240), oklch(85% 0.2 300), oklch(85% 0.2 360));
+}
+.chromatic-hue-slider::-webkit-slider-thumb {
+  width: 0.25rem;
+  height: 3rem;
+  appearance: none;
+  border-radius: 0.375rem;
+  background-color: #525252;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  border: 2px solid #737373;
+}
+.chromatic-hue-slider::-moz-range-thumb {
+  width: 0.25rem;
+  height: 3rem;
+  appearance: none;
+  border-radius: 0.375rem;
+  background-color: #525252;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  border: 2px solid #737373;
+}

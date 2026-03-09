@@ -61,6 +61,11 @@ public static class IapManager
         WinRT.Interop.InitializeWithWindow.Initialize(StoreContext, form.Handle);
     }
 
+    public static void SetOfflineLicenseActive()
+    {
+        License = LicenseStatus.Active;
+    }
+
     public static async Task<StorePurchaseResult> Purchase()
     {
         if (_form.WindowState == FormWindowState.Minimized)

@@ -14,12 +14,12 @@ export default defineConfig(({command}) => ({
     UnoCSS(),
     ViteYaml(),
     svgLoader(),
-    // sentryVitePlugin({
-    //   org: "sentry",
-    //   project: "maichartmanager-front",
-    //   disable: command === 'serve',
-    //   url: "https://sentry.c5y.moe",
-    // })
+    sentryVitePlugin({
+      org: "sentry",
+      project: "maichartmanager-front",
+      disable: command === 'serve',
+      url: "https://sentry.c5y.moe",
+    })
   ],
   resolve: {
     alias: {
@@ -34,6 +34,7 @@ export default defineConfig(({command}) => ({
   server: {
     proxy: {
       '/MaiChartManagerServlet': 'http://localhost:5181'
-    }
+    },
+    port: 5182,
   }
 }));

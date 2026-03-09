@@ -10,6 +10,9 @@ using Microsoft.VisualBasic;
 
 namespace MaiChartManager;
 
+/// <summary>
+/// Legacy 启动器窗口，现在应该只有在没有 webview2 的时候才使用
+/// </summary>
 public partial class Launcher : Form
 {
     public Launcher()
@@ -26,6 +29,7 @@ public partial class Launcher : Form
         textBoxLanAuthPass.Text = StaticSettings.Config.AuthPassword;
         textBox1.Items.AddRange(StaticSettings.Config.HistoryPath.ToArray());
         CheckStartupStatus();
+        PositionOnScreen();
 # if DEBUG
         checkBox1.Checked = true;
         StaticSettings.Config.Export = true;
@@ -54,6 +58,29 @@ public partial class Launcher : Form
         checkBox1.Checked = true;
         StaticSettings.Config.Export = true;
         StartClicked(null, null);
+    }
+
+    private void PositionOnScreen()
+    {
+        StartPosition = FormStartPosition.Manual;
+        var landscape = Screen.AllScreens.FirstOrDefault(s => s.WorkingArea.Width >= s.WorkingArea.Height);
+        if (landscape != null)
+        {
+            var area = landscape.WorkingArea;
+            Location = new Point(
+                area.X + (area.Width - Width) / 2,
+                area.Y + (area.Height - Height) / 2
+            );
+            return;
+        }
+        var portrait = Screen.PrimaryScreen ?? Screen.AllScreens[0];
+        var pArea = portrait.WorkingArea;
+        var squareSize = pArea.Width;
+        var squareTop = pArea.Bottom - squareSize;
+        Location = new Point(
+            pArea.X + (squareSize - Width) / 2,
+            squareTop + (squareSize - Height) / 2
+        );
     }
 
     private async Task CheckStartupStatus()
@@ -86,7 +113,7 @@ public partial class Launcher : Form
         textBox1.Text = folderBrowserDialog1.SelectedPath;
     }
 
-    private string loopbackUrl;
+    private string? loopbackUrl;
 
 
     [GeneratedRegex(@"[^\u0000-\u007F]")]
@@ -97,7 +124,7 @@ public partial class Launcher : Form
         return SpecialCharactersRegex().IsMatch(input);
     }
 
-    private void StartClicked(object sender, EventArgs e)
+    private void StartClicked(object? sender, EventArgs? e)
     {
         if (button2.Text == Locale.LauncherStop)
         {
@@ -148,7 +175,7 @@ public partial class Launcher : Form
         StaticSettings.Config.UseAuth = checkBoxLanAuth.Checked;
         StaticSettings.Config.AuthUsername = textBoxLanAuthUser.Text;
         StaticSettings.Config.AuthPassword = textBoxLanAuthPass.Text;
-        File.WriteAllText(Path.Combine(StaticSettings.appData, "config.json"), JsonSerializer.Serialize(StaticSettings.Config));
+        StaticSettings.Config.Save();
 # endif
 
         textBox1.Enabled = false;
@@ -159,19 +186,14 @@ public partial class Launcher : Form
         textBoxLanAuthPass.Enabled = false;
         button2.Text = Locale.LauncherStop;
 
-        ServerManager.StartApp(checkBox1.Checked, () =>
+        ServerManager.StartApp(checkBox1.Checked, (url) =>
         {
-            var server = ServerManager.app!.Services.GetRequiredService<IServer>();
-            var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>();
-
-            if (serverAddressesFeature == null) return;
-
-            loopbackUrl = serverAddressesFeature.Addresses.First();
+            loopbackUrl = url;
 
             // 本地模式
             if (checkBox1.Checked) return;
-            Invoke(() => label1_LinkClicked(null, null));
-            Dispose();
+            AppLifecycleManager.ShowBrowser(loopbackUrl);
+            AppMain.UiContext?.Post(_ => Dispose(), null);
         });
 
         if (!checkBox1.Checked) return;
@@ -186,15 +208,7 @@ public partial class Launcher : Form
 
     private void label1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
     {
-        if (AppMain.BrowserWin is null || AppMain.BrowserWin.IsDisposed)
-        {
-            AppMain.BrowserWin = new Browser(loopbackUrl);
-            AppMain.BrowserWin.Show();
-        }
-        else
-        {
-            AppMain.BrowserWin.Activate();
-        }
+        AppLifecycleManager.ShowBrowser(loopbackUrl ?? throw new InvalidOperationException("loopbackUrl is null"));
     }
 
     private void Launcher_FormClosed(object sender, FormClosedEventArgs e)
@@ -213,7 +227,7 @@ public partial class Launcher : Form
         }
     }
 
-    private async void checkBox_startup_Click(object sender, EventArgs e)
+    private async void checkBox_startup_Click(object? sender, EventArgs? e)
     {
         await SaveConfigFileAsync();
         var startupTask = await StartupTask.GetAsync("MaiChartManagerStartupId");
@@ -227,7 +241,7 @@ public partial class Launcher : Form
         }
     }
 
-    public void ShowWindow(object sender = null, EventArgs e = null)
+    public void ShowWindow(object? sender = null, EventArgs? e = null)
     {
         Visible = true;
         WindowState = FormWindowState.Normal;
@@ -238,7 +252,7 @@ public partial class Launcher : Form
 
     private static async Task SaveConfigFileAsync()
     {
-        await File.WriteAllTextAsync(Path.Combine(StaticSettings.appData, "config.json"), JsonSerializer.Serialize(StaticSettings.Config));
+        StaticSettings.Config.Save();
     }
 
     private async void label3_Click(object sender, EventArgs e)

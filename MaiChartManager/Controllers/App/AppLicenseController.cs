@@ -20,4 +20,16 @@ public class AppLicenseController : Controller
 
         return new RequestPurchaseResult(null, res.Status);
     }
+
+    [HttpPost]
+    public async Task<bool> VerifyOfflineKey([FromBody] string key)
+    {
+        var result = await OfflineReg.VerifyAsync(key);
+        if (!result.IsValid) return false;
+
+        StaticSettings.Config.OfflineKey = key;
+        StaticSettings.Config.Save();
+        IapManager.SetOfflineLicenseActive();
+        return true;
+    }
 }

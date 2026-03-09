@@ -12,91 +12,25 @@ namespace MaiChartManager.Controllers.Mod;
 
 [ApiController]
 [Route("MaiChartManagerServlet/[action]Api")]
-public class ConfigurationController(StaticSettings settings, ILogger<ConfigurationController> logger) : ControllerBase
+public class ConfigurationController : ControllerBase
 {
-    public class UnsupportedConfigApiVersionException() : Exception(Locale.UnsupportedConfigVersion);
+    private readonly StaticSettings settings;
+    private readonly ILogger<ConfigurationController> logger;
+    private readonly ModConfigService modConfigService;
 
-    public class ConfigCorruptedException() : Exception(Locale.AquaMaiConfigCorrupted);
-
-    public class AquaMaiNotInstalledException() : Exception(Locale.AquaMaiNotInstalled);
-
-    public class AquaMaiSignatureVerificationFailedException() : Exception("AquaMaiSignatureVerificationFailed");
-
-    [NonAction]
-    private static void CheckConfigApiVersion(HeadlessConfigInterface configInterface)
+    public ConfigurationController(StaticSettings settings, ILogger<ConfigurationController> logger, ModConfigService modConfigService)
     {
-        var currentSupportedApiVersion = new Version(1, 1);
-        var configApiVersion = new Version(configInterface.ApiVersion);
-        if (currentSupportedApiVersion.Major != configApiVersion.Major)
-        {
-            throw new UnsupportedConfigApiVersionException();
-        }
-
-        if (currentSupportedApiVersion.Minor > configApiVersion.Minor)
-        {
-            throw new UnsupportedConfigApiVersionException();
-        }
-    }
-
-    [NonAction]
-    public static IConfig GetCurrentAquaMaiConfig(bool forceDefault = false, bool skipSignatureCheck = false)
-    {
-        if (!System.IO.File.Exists(ModPaths.AquaMaiDllInstalledPath))
-        {
-            throw new AquaMaiNotInstalledException();
-        }
-
-        var binary = System.IO.File.ReadAllBytes(ModPaths.AquaMaiDllInstalledPath);
-        if (!skipSignatureCheck)
-        {
-            var sigResult = AquaMaiSignatureV2.VerifySignature(binary);
-            if (sigResult.Status != AquaMaiSignatureV2.VerifyStatus.Valid)
-            {
-                throw new AquaMaiSignatureVerificationFailedException();
-            }
-        }
-        var configInterface = HeadlessConfigLoader.LoadFromPacked(binary);
-        var config = configInterface.CreateConfig();
-        CheckConfigApiVersion(configInterface);
-        if (System.IO.File.Exists(ModPaths.AquaMaiConfigPath) && !forceDefault)
-        {
-            try
-            {
-                var view = configInterface.CreateConfigView(System.IO.File.ReadAllText(ModPaths.AquaMaiConfigPath));
-                var migrationManager = configInterface.GetConfigMigrationManager();
-
-                if (migrationManager.GetVersion(view) != migrationManager.LatestVersion)
-                {
-                    Console.WriteLine("Migrating AquaMai config from {0} to {1}", migrationManager.GetVersion(view), migrationManager.LatestVersion);
-                    view = migrationManager.Migrate(view);
-                }
-
-                var parser = configInterface.GetConfigParser();
-                parser.Parse(config, view);
-                StaticSettings.UpdateAssetPathsFromAquaMaiConfig(config);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("无法加载 AquaMai 配置");
-                Console.WriteLine(ex);
-                if (ex.Message.Contains("Could not migrate the config"))
-                {
-                    // 这个应该是，AquaMai 未安装或需要更新
-                    throw;
-                }
-                // 这个的提示是 AquaMai 配置文件损坏
-                throw new ConfigCorruptedException();
-            }
-        }
-
-        return config;
+        this.settings = settings;
+        this.logger = logger;
+        this.modConfigService = modConfigService;
     }
 
     [HttpGet]
-    public AquaMaiConfigDto.ConfigDto GetAquaMaiConfig(bool forceDefault = false, bool skipSignatureCheck = false)
+    public async Task<AquaMaiConfigDto.ConfigDto> GetAquaMaiConfig(bool forceDefault = false, bool skipSignatureCheck = false)
     {
+        var dllPath = await modConfigService.GetAquaMaiDllPath();
         Dictionary<string, string[]>? configSort = null;
-        using (var stream = new FileStream(ModPaths.AquaMaiDllInstalledPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var stream = new FileStream(dllPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
         {
             var asm = ModuleDefinition.ReadModule(stream);
             var configSortRes = asm.Resources.FirstOrDefault(it => it is EmbeddedResource { Name: "configSort.yaml.compressed" } or EmbeddedResource { Name: "configSort.yaml" });
@@ -108,7 +42,8 @@ public class ConfigurationController(StaticSettings settings, ILogger<Configurat
                 configSort = deserializer.Deserialize<Dictionary<string, string[]>>(yaml);
             }
         }
-        var config = GetCurrentAquaMaiConfig(forceDefault, skipSignatureCheck);
+        var shouldSkipSignatureCheck = skipSignatureCheck || !string.Equals(dllPath, ModPaths.AquaMaiDllInstalledPath, StringComparison.OrdinalIgnoreCase);
+        var config = await modConfigService.GetCurrentAquaMaiConfig(forceDefault, shouldSkipSignatureCheck);
         return new AquaMaiConfigDto.ConfigDto(
             config.ReflectionManager.Sections.Select(section =>
             {
@@ -124,11 +59,12 @@ public class ConfigurationController(StaticSettings settings, ILogger<Configurat
     [HttpPut]
     public async Task SetAquaMaiConfig(AquaMaiConfigDto.ConfigSaveDto config)
     {
+        var dllPath = await modConfigService.GetAquaMaiDllPath();
         var jsonOptions = new JsonSerializerOptions();
         jsonOptions.Converters.Add(new JsonStringEnumConverter());
 
-        var configInterface = HeadlessConfigLoader.LoadFromPacked(ModPaths.AquaMaiDllInstalledPath);
-        CheckConfigApiVersion(configInterface);
+        var configInterface = HeadlessConfigLoader.LoadFromPacked(dllPath);
+        modConfigService.CheckConfigApiVersion(configInterface);
         var configEdit = configInterface.CreateConfig();
 
         foreach (var section in configEdit.ReflectionManager.Sections)

@@ -1,10 +1,16 @@
 import { computed, ref, watch } from "vue";
 import { AppVersionResult, ConfigDto, GameModInfo, GenreXml, GetAssetsDirsResult, MusicXmlWithABJacket, VersionXml } from "@/client/apiGen";
-import api, { aquaMaiVersionConfig } from "@/client/api";
+import api from "@/client/api";
 import { captureException } from "@sentry/vue";
 import posthog from "posthog-js";
 import { useStorage, useWindowFocus, whenever } from "@vueuse/core";
 import { locale } from "@/locales";
+import { updateAquaMaiConfig } from "@/views/ModManager/refs";
+import { updateSettings } from "@/store/settings";
+import { SidebarItem } from "@/components/Sidebar";
+import { eagerFetchChangelog, updateAppUpdateInfo, updateModUpdateInfo } from "@/store/appUpdate";
+
+export const sidebarActive = ref<SidebarItem>('charts');
 
 export const error = ref();
 export const errorId = ref<string>();
@@ -51,14 +57,31 @@ export const assetDirs = ref<GetAssetsDirsResult[]>([]);
 export const version = ref<AppVersionResult>();
 export const modInfo = ref<GameModInfo>();
 
-export const musicList = computed(() => musicListAll.value.filter(m => m.assetDir === selectedADir.value));
+export type MusicSortMode = 'id' | 'name' | 'version';
+export const musicSortMode = useStorage<MusicSortMode>('musicSortMode', 'id');
+
+const sortByNonDxId = (a: MusicXmlWithABJacket, b: MusicXmlWithABJacket) =>
+  (a.id! % 10000) - (b.id! % 10000);
+
+const musicSortComparators: Record<MusicSortMode, (a: MusicXmlWithABJacket, b: MusicXmlWithABJacket) => number> = {
+  id: sortByNonDxId,
+  name: (a, b) => (a.sortName ?? '').localeCompare(b.sortName ?? ''),
+  version: (a, b) => (a.version ?? 0) - (b.version ?? 0) || sortByNonDxId(a, b),
+};
+
+export const musicList = computed(() =>
+  musicListAll.value
+    .filter(m => m.assetDir === selectedADir.value)
+    .sort(musicSortComparators[musicSortMode.value] ?? sortByNonDxId)
+);
 export const selectedMusic = computed(() => musicList.value.find(m => m.id === selectMusicId.value));
 export const selectedLevel = ref(0);
 
-export const aquaMaiConfig = ref<ConfigDto>()
-export const modUpdateInfo = ref<Awaited<ReturnType<typeof aquaMaiVersionConfig.getGetConfig>>['data']>([{
-  type: 'builtin',
-}])
+// 如ReplaceChart等后端接口可能会涉及对MusicXml中的信息进行修改后保存。此时前端updateMusicList时会发现相关数据出现变更，触发了MusicEdit/ChartPanel中的watch，造成发送多余的edit请求、同时modified也被错误设置为true。
+// 因此，对于涉及内部对xml进行修改后会自动保存的后端接口，可以在updateMusicList期间打开本选项，以阻止MusicEdit/ChartPanel中的sync动作。
+export const disableSync = ref(false);
+
+export { aquaMaiConfig } from "@/views/ModManager/refs";
 
 export const saveMusicIfNeeded = async (id: number) => {
   if (!id) return;
@@ -90,8 +113,11 @@ export const updateAddVersionList = async () => {
   addVersionList.value = response.data;
 }
 
-export const updateMusicList = async () => {
-  musicListAll.value = (await api.GetMusicList()).data;
+export const updateMusicList = async (disableAutoSync=false) => {
+  const data = (await api.GetMusicList()).data;
+  if (disableAutoSync) disableSync.value = true;
+  musicListAll.value = data;
+  setTimeout(()=>disableSync.value = false); // timeout=0表示在下一帧执行
 }
 
 export const updateAssetDirs = async () => {
@@ -101,36 +127,15 @@ export const updateAssetDirs = async () => {
 export const updateVersion = async () => {
   version.value = (await api.GetAppVersion()).data;
   locale.value = version.value?.locale || 'en';
+  // 预加载当前版本的更新日志
+  if (version.value?.version) {
+    eagerFetchChangelog(version.value.version);
+  }
 }
 
 export const updateModInfo = async () => {
   modInfo.value = (await api.GetGameModInfo()).data;
 }
-
-export const updateModUpdateInfo = async () => {
-  try {
-    modUpdateInfo.value = await Promise.any([
-      (async () => {
-        const res = await aquaMaiVersionConfig.getGetConfig({
-          cache: 'no-cache',
-        });
-        return res.data;
-      })(),
-      (async () => {
-        const res = await fetch('https://munet-version-config-1251600285.cos.ap-shanghai.myqcloud.com/aquamai.json', {
-          cache: 'no-cache',
-        });
-        if (!res.ok) {
-          throw new Error(`Failed to fetch mod update info: ${res.status} ${res.statusText}`);
-        }
-        return await res.json();
-      })(),
-    ]);
-  } catch (e) {
-    console.error('Failed to get mod update info:', e);
-  }
-}
-
 
 export const updateAll = async () => Promise.all([
   updateVersion(),
@@ -140,6 +145,9 @@ export const updateAll = async () => Promise.all([
   updateMusicList(),
   updateModInfo(),
   updateModUpdateInfo(),
+  updateAppUpdateInfo(),
+  updateAquaMaiConfig(),
+  updateSettings(),
 ])
 
 export const gameVersion = computed(() => version.value?.gameVersion || 45)

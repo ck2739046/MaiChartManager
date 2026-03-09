@@ -74,6 +74,9 @@ music:
     filterExpert: Expert
     filterReMaster: Re:Master
     filterAdvanced: Advanced
+    sortById: ID
+    sortByName: Name
+    sortByVersion: Release
   edit:
     name: Song Title
     artist: Artist
@@ -84,6 +87,8 @@ music:
     addVersion: Add Version
     utageType: Utage Type
     utageComment: Utage Comment
+    sortName: In-game SortName
+    sortNameTips: May only contain digits, uppercase letters, and katakana; invalid characters will be automatically replaced
     jacket: Jacket
     audioPreview: Preview
     editPreview: Edit Preview
@@ -133,6 +138,8 @@ music:
     replaceChartConfirm: Confirm to replace {level}?
     replaceChartFailed: Failed to replace chart
     replaceChartSuccess: Chart replaced successfully
+    notValidChartFile: Chart file must be .ma2 or maidata.txt.
+    replaceChartShiftModeHint: Make sure the delay adjustment mode selected here matches the one used when importing the chart, otherwise notes may be positioned incorrectly!
   batch:
     title: Batch Actions
     batchAndSearch: Batch Actions & Search
@@ -218,6 +225,7 @@ chart:
     option:
       advancedOptions: Advanced Options
       shiftMode: Delay Adjustment Mode
+      shiftModeLocked: The Delay Adjustment Mode is locked to the mode used when the chart was originally imported and cannot be changed.
       shiftByBar: By Bar
       shiftByBarDesc: >-
         If the rest at the beginning of the chart is less than one bar, add one
@@ -241,14 +249,8 @@ chart:
         present)
 
         May cause first note to appear at odd timing, e.g. immediately at start
-      ignoreLevel: Ignore constant, exclude from B50 calculation
-      disableBga: Don't import BGA even if present
-      noScale: Don't scale BGA to 1080 width, this option will be remembered
-      pvCodec: PV Codec
-      yuv420p: Use YUV420P color space when converting USM
-      codecPreferH264: Prefer H264
-      codecForceH264: Force H264
-      codecForceVP9: Force VP9 USM
+      codecForceH264: H264
+      codecForceVP9: VP9 USM
     assignId: Assign ID for new imported songs
     currentProcessing: Currently processing
     folderHint: >-
@@ -289,10 +291,6 @@ mod:
   other: Other
   needEnableOption: Need to enable this option
   unsupportedType: 'Unsupported type: {type}'
-  notInstalledTitle: AquaMai Not Installed
-  notInstalledWarningMessage: >-
-    MelonLoader or AquaMai is not installed, music jackets won't load in game.
-    Click Mod Management to install
   dontShowAgain: Don't show again
   versionNotFound: Version not found
   installFailed: Failed to install AquaMai, files may be in use?
@@ -302,7 +300,8 @@ mod:
   versionTooLow: AquaMai version too low, please update to 1.6.0 or above
   installed: Installed
   installedVersion: Installed
-  availableVersion: Available
+  availableVersion: Latest
+  loaded: Loaded
   killGameProcess: Kill Game Process
   needInstallOrUpdate: AquaMai not installed or needs update
   adxHid:
@@ -348,19 +347,30 @@ mod:
     button2P: 2P Button {index}
     select1P: 1P Select
     select2P: 2P Select
+    disableIO4: Disable IO4 Input
+    disableIO4Tip: Toggle on to disable corresponding input. After disabling IO4 input, your compatible IO4 board or segatools IO4 simulation will be ignored.
+    disableIO4System: System Buttons (Test, Service)
+    disable1P: Disable 1P
+    enable1P: Enable 1P
+    disable2P: Disable 2P
+    enable2P: Enable 2P
+    disableSystem: Disable System Buttons
+    enableSystem: Enable System Buttons
   soundChannel:
-    P1SpeakerLeft: 1P Speaker Left
-    P1SpeakerRight: 1P Speaker Right
-    P1HeadphoneLeft: 1P Headphone Left
-    P1HeadphoneRight: 1P Headphone Right
-    P2SpeakerLeft: 2P Speaker Left
-    P2SpeakerRight: 2P Speaker Right
-    P2HeadphoneLeft: 2P Headphone Left
-    P2HeadphoneRight: 2P Headphone Right
+    P1SpeakerLeft: Front Left
+    P1SpeakerRight: Front Right
+    P1HeadphoneLeft: Center/Sub Left
+    P1HeadphoneRight: Center/Sub Right
+    P2SpeakerLeft: Rear Left
+    P2SpeakerRight: Rear Right
+    P2HeadphoneLeft: Side Left
+    P2HeadphoneRight: Side Right
     None: Disabled
   judgeAccuracyInfo:
     author: 'Author: '
     viewDoc: View Documentation
+  trackCamouflage:
+    viewDoc: View Configuration Instructions
   commentOverrides:
     Fancy_GamePlay_JudgeDisplay4B: |
       More detailed judge display
@@ -372,8 +382,7 @@ mod:
       After enabling this, the settings in Test menu will no longer work, but
       you can still test (testing requires disabling 1P mode)
 
-      If your cabinet has corresponding host software, it's recommended to use
-      it for adjustments
+      If your controller has corresponding host software, it's recommended to disable this option and use the host software for adjustments
   configCorrupted: AquaMai config file corrupted
   configCorruptedMessage: Please manually check AquaMai.toml and try to fix possible issues
   resetToDefault: Reset to default settings
@@ -411,6 +420,52 @@ mod:
     oneClickInstall: One-Click Install
     installed: Correctly installed
     installFailed: Error occurred while installing Maimoller dependencies
+    button1: Button 1 (Triangle)
+    button2: Button 2 (Circle)
+    button3: Button 3 (Circle)
+    button4: Button 4 (Circle)
+    Touch1p: 1P Touchscreen
+    Touch2p: 2P Touchscreen
+    Button1p: 1P Buttons
+    Button2p: 2P Buttons
+    Led1p: 1P LEDs
+    Led2p: 2P LEDs
+    P1: Enable 1P
+    P2: Enable 2P
+    tip: If mixing Maimoller with other protocols, disable this for the non-Maimoller side
+  on: 'On'
+  off: 'Off'
+  stableChannel: "Stable Channel"
+  fastChannel: "Fast Channel"
+  mumod: "MuMod"
+  mumodDesc: "Auto-update Loader"
+  mumodInstalled: "Installed"
+  mumodChannel: "Update Channel"
+  mumodChannelSlow: "Stable"
+  mumodChannelFast: "Fast"
+  cacheUpdating: "Updating cache..."
+  cacheFailed: "Cache update failed"
+  conflict:
+    title: "Conflict Detected"
+    message: "Both AquaMai and MuMod are present, please choose which to keep"
+    deleteAquaMai: "Delete AquaMai"
+    deleteMuMod: "Delete MuMod"
+  pdx:
+    noDevice: "No PDX device detected"
+    deviceCount: "{count} PDX device(s) detected"
+    driverWinusb: "Current driver: Exclusive mode"
+    driverDefault: "Current driver: Windows Touch mode"
+    switchToExclusive: "Switch to Exclusive mode"
+    switchToWintouch: "Switch to Windows Touch mode"
+    switchSuccess: "Driver switched successfully"
+    switchFailed: "Driver switch failed"
+    switchCancelled: "Permission request cancelled"
+    refresh: "Refresh device status"
+    unavailable: "PDX driver tool unavailable"
+    selectDevice: "Select device"
+    path1P: "1P Device Path"
+    path2P: "2P Device Path"
+    pathDesc: "USB port path, e.g. 2.2. Use the path shown in the configuration tool. Leave empty to use the first detected device as 1P"
 tools:
   title: Tools
   audioConvert: Audio Convert (ACB + AWB)
@@ -420,10 +475,6 @@ tools:
   convertFailed: Conversion failed
   videoConvertError: Video conversion error
   videoOptions:
-    title: Video Conversion Options
-    onlyForUsm: The following options only apply to converting to USM from common formats
-    noScale: Don't scale video to 1080 width
-    useYuv420p: Use YUV420P color space
     processing: Still processing, please wait...
 error:
   title: Error
@@ -439,6 +490,7 @@ error:
     confirm: Got it
   file:
     notSelected: No file selected
+  unsupportedFileType: 'Unsupported file type'
 message:
   notice: Notice
   saveSuccess: Saved successfully
@@ -449,6 +501,7 @@ message:
   refreshing: Refreshing...
   refreshAll: Refresh All
 copy:
+  copyAndExport: Copy & Export
   title: Copy To
   selectTarget: Select target directory
   changeId: Change ID
@@ -503,8 +556,75 @@ about:
   h264Encoder: H264 Encoder
   premiumActive: Thank you for your support, premium features activated!
   continueSupport: Click here to continue supporting
+  offlineActivation: Offline Activation
+  enterActivationCode: Please enter activation code
+  activationCodeInvalid: Invalid activation code
+  activationSuccess: Premium features activated, thank you!
+  updateAvailable: 'New version available ({version})'
+  viewChangelog: View Changelog
+  changelogTitle: Changelog
+  updateHint: Update from Microsoft Store
 jacket:
   upload: Upload Jacket
   select: Select Jacket
   setFailed: Set Failed
   replaceFailed: Failed to replace image
+sidebar:
+  refreshData: Refresh Data
+  charts: Charts
+  mods: Mods
+  batch: Batch
+  genres: Genres
+  tools: Tools
+  settings: Settings
+  language: Language
+settings:
+  title: Settings
+  appearance: Appearance
+  themeHue: Theme Hue
+  resetDefault: Reset Default
+  zoom: UI Scale
+  zoomAuto: Auto
+  importOptions: Import Options
+  ignoreLevel: Ignore level, exclude from B50
+  disableBga: Don't import BGA even if present
+  videoOptions: Video Options
+  movieCodec: PV Codec
+  yuv420p: Use YUV420P color space when converting USM
+  noScale: Don't scale video to 1080 width
+  updateChannel: Update Channel
+  updateChannelSlow: Stable
+  updateChannelCi: Fast
+  updateChannelDesc: Stable channel delays updates by a few days, suitable for users who prefer stability
+  gameDirectory: Game Directory
+  currentPath: Current Path
+  changeDirectory: Change Directory
+  changingDirectory: Switching...
+  changeDirectoryFailed: Failed to switch directory
+  switchMode: Switch Mode
+  historyPath: History
+  deleteHistory: Delete
+  noHistory: No history
+oobe:
+  welcome: Welcome
+  welcomeMessage: Welcome to MaiChartManager
+  selectGameDir: Select Game Directory
+  selectGameDirDesc: Please select the maimai DX game directory
+  browse: Browse...
+  selectedPath: Selected
+  pathNotValid: Invalid path
+  selectMode: Select Mode
+  localMode: Local Mode
+  localModeDesc: Manage charts on this computer
+  remoteMode: Remote Mode
+  remoteModeDesc: Access via LAN
+  username: Username
+  password: Password
+  enableAuth: Enable Authentication
+  complete: Complete
+  completing: Completing setup...
+  remoteReady: Remote access is ready
+  lanAddresses: LAN Addresses
+  openMainUI: Open Main UI
+  initializingData: Initializing game data...
+  startupOnBoot: Start on boot

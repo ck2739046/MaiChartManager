@@ -1,10 +1,23 @@
 html
   --selected-bg: rgba(221, 243, 238, 0.6)
   user-select: none
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.4) 16px)
+
+body
+  font-size: 1rem
+  line-height: 1.5
+
+  .bg-dropMenu
+    background: oklch(0.9 0.02 var(--hue) / 80%) !important
 
 *
   -webkit-user-drag: none
+
+a
+  text-decoration: none
+
+button, a.button
+  height: 2.4em
+  font-family: 'Quicksand', "Noto Sans SC"
 
 .levelTabs
   .n-tabs-wrapper
@@ -74,3 +87,17 @@ pre
   left: 0
   right: 0
   bottom: 0
+
+@media (hover: hover)
+  .cst
+    &::-webkit-scrollbar
+      width: 6px
+      height: 6px
+
+    &::-webkit-scrollbar-thumb
+      border-radius: 4px
+      background: #999
+      transition: background 0.2s
+
+      &:hover
+        background: #666

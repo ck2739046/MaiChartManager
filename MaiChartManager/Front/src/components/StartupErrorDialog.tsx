@@ -1,14 +1,18 @@
 import { defineComponent, PropType, ref, computed, watch } from 'vue';
-import { NFlex, NList, NListItem, NModal } from 'naive-ui';
+import { Modal } from '@munet/ui';
 import useAsync from "@/hooks/useAsync";
 import api from "@/client/api";
+import { ensureBackendUrl } from '@/utils/ensureBackendUrl';
 import { useI18n } from 'vue-i18n';
 
 export default defineComponent({
   // props: {
   // },
   setup(props, { emit }) {
-    const errors = useAsync(() => api.GetAppStartupErrors())
+    const errors = useAsync(async () => {
+      await ensureBackendUrl();
+      return api.GetAppStartupErrors();
+    })
     const show = ref(false)
     const { t } = useI18n();
 
@@ -19,24 +23,24 @@ export default defineComponent({
       }
     })
 
-    return () => <NModal
-      preset="card"
-      class="w-[min(50vw,60em)] bg-#FCEEEE!"
+    return () => <Modal
+      width="min(50vw,60em)"
       title={t('startup.error')}
       v-model:show={show.value}
+      class="bg-#FCEEEE!"
     >
-      <NFlex vertical class="max-h-70vh overflow-y-auto">
-        <NList showDivider={false}>
+      <div class="flex flex-col gap-2 max-h-70vh overflow-y-auto">
+        <div class="flex flex-col gap-1">
           {errors.data.value?.data?.map((error) => {
-            return <NListItem>
+            return <div>
               <div class="text-0.9em">
                 {error}
               </div>
-            </NListItem>
+            </div>
           })}
-        </NList>
+        </div>
         {t('startup.fixPrompt')}
-      </NFlex>
-    </NModal>;
+      </div>
+    </Modal>;
   },
 });

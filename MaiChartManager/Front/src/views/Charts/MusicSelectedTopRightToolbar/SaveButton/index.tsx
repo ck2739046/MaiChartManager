@@ -1,0 +1,40 @@
+import { defineComponent, ref, Teleport } from "vue";
+import { selectedADir, selectedMusic, selectMusicId, updateMusicList } from "@/store/refs";
+import api from "@/client/api";
+import animation from './animation.module.sass';
+import { useMagicKeys, whenever } from '@vueuse/core'
+import { useI18n } from 'vue-i18n';
+
+export default defineComponent({
+  setup() {
+    const isAnimationShow = ref(false);
+    const { t } = useI18n();
+
+    const save = async () => {
+      await api.SaveMusic(selectMusicId.value, selectedADir.value);
+      isAnimationShow.value = true;
+      setTimeout(() => {
+        isAnimationShow.value = false;
+      }, 250);
+      await updateMusicList();
+    }
+
+    const {ctrl_s} = useMagicKeys({
+      passive: false,
+      onEventFired(e) {
+        if (e.ctrlKey && e.key === 's' && e.type === 'keydown')
+          e.preventDefault()
+      },
+    })
+    whenever(ctrl_s, save);
+
+    return () => selectedMusic.value && (
+      <button onClick={save} class={selectedMusic.value.modified && "bg-orange-300!"}>
+        {t('common.save')}
+        {isAnimationShow.value && <Teleport to="body">
+          <div class={animation.box}/>
+        </Teleport>}
+      </button>
+    );
+  }
+});

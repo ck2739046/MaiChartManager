@@ -72,40 +72,21 @@ if (Test-Path $PackDir) { Remove-Item $PackDir -Recurse -Force }
 Remove-Item "$PSScriptRoot\*.appx" -ErrorAction SilentlyContinue
 Remove-Item "$PSScriptRoot\*.msix" -ErrorAction SilentlyContinue
 
-# ==========================================
-# 3. 构建 AquaMai
-# ==========================================
-Write-Host "Building AquaMai..." -ForegroundColor Cyan
-Push-Location "$ProjectRoot\AquaMai"
-try {
-    Stop-Process -Name "dotnet" -Force -ErrorAction SilentlyContinue
-    ./build.ps1
-    
-    $TargetResDir = "$ProjectRoot\MaiChartManager\Resources"
-    if (-not (Test-Path $TargetResDir)) { New-Item -ItemType Directory -Path $TargetResDir }
-    Copy-Item "Output\AquaMai.dll" $TargetResDir -Force
-    
-    # AquaMai 签名
-    if (Get-Command "AquaMaiLocalBuild.exe" -ErrorAction SilentlyContinue) {
-        Write-Host "Signing AquaMai.dll..." -ForegroundColor Cyan
-        AquaMaiLocalBuild.exe "$TargetResDir\AquaMai.dll"
-    } else {
-        Write-Host "AquaMaiLocalBuild.exe not found, skipping AquaMai signing." -ForegroundColor Yellow
+# Canary 模式下 wwwroot 由 CI 的 Linux job 预构建，跳过前端构建
+# Release 模式下（本地构建）始终构建前端
+if ($Mode -ne "Canary" -or -not (Test-Path "$ProjectRoot\MaiChartManager\wwwroot\index.html")) {
+    Write-Host "Building Frontend..." -ForegroundColor Cyan
+    Push-Location "$ProjectRoot\MaiChartManager\Front"
+    try {
+        pnpm install
+        if ($LASTEXITCODE -ne 0) { throw "pnpm install failed with exit code $LASTEXITCODE" }
+        pnpm build
+        if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE" }
+    } finally {
+        Pop-Location
     }
-
-} finally {
-    Pop-Location
-}
-
-# ==========================================
-# 4. 构建前端
-# ==========================================
-Write-Host "Building Frontend..." -ForegroundColor Cyan
-Push-Location "$ProjectRoot\MaiChartManager\Front"
-try {
-    cmd /c pnpm build
-} finally {
-    Pop-Location
+} else {
+    Write-Host "wwwroot already exists, skipping frontend build." -ForegroundColor Yellow
 }
 
 # ==========================================
@@ -118,7 +99,8 @@ try {
     $ConfigName = if ($Mode -eq "Canary") { "Crack" } else { "Release" }
     Write-Host "Using Configuration: $ConfigName" -ForegroundColor Yellow
     
-    dotnet publish -p:Configuration=$ConfigName
+    dotnet publish Sitreamai.slnx -c $ConfigName
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
 } finally {
     Pop-Location
 }

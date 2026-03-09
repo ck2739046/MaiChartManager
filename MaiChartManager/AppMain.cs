@@ -6,6 +6,8 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using MaiChartManager.Utils;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Xabe.FFmpeg;
 
 namespace MaiChartManager;
@@ -13,8 +15,12 @@ namespace MaiChartManager;
 public partial class AppMain : ISingleInstance
 {
     public static Browser? BrowserWin { get; set; }
-
-    private Launcher _launcher;
+    public static OobeBrowser? OobeBrowser { get; set; }
+    public static Form? ActiveForm { get; set; }
+    /// <summary>
+    /// UI 线程上下文
+    /// </summary>
+    public static SynchronizationContext? UiContext { get; private set; }
 
     private static ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
     {
@@ -67,6 +73,8 @@ public partial class AppMain : ISingleInstance
         {
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
             ApplicationConfiguration.Initialize();
+            SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
+            UiContext = SynchronizationContext.Current;
             FFmpeg.SetExecutablesPath(StaticSettings.exeDir);
             VideoConvert.CheckHardwareAcceleration();
 
@@ -78,7 +86,7 @@ public partial class AppMain : ISingleInstance
             if (StaticSettings.Config.Locale == null)
             {
                 // 首次启动，从系统语言检测
-                var systemCulture = System.Globalization.CultureInfo.CurrentUICulture;
+                var systemCulture = CultureInfo.CurrentUICulture;
                 var cultureName = systemCulture.Name;
 
                 // 检测语言：简体中文、繁体中文、英文
@@ -111,8 +119,8 @@ public partial class AppMain : ISingleInstance
                 _ => new System.Globalization.CultureInfo("en-US")
             };
             Locale.Culture = culture;
-            System.Globalization.CultureInfo.CurrentCulture = culture;
-            System.Globalization.CultureInfo.CurrentUICulture = culture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
 
             string? availableVersion = null;
             try
@@ -133,8 +141,59 @@ public partial class AppMain : ISingleInstance
 
             IapManager.Init();
 
-            _launcher = new Launcher();
+            // Validate saved GamePath — if invalid, clear it to trigger OOBE
+            if (!string.IsNullOrEmpty(StaticSettings.Config.GamePath))
+            {
+                StaticSettings.GamePath = StaticSettings.Config.GamePath;
+                if (!Directory.Exists(StaticSettings.StreamingAssets))
+                {
+                    StaticSettings.Config.GamePath = "";
+                    StaticSettings.GamePath = "";
+                    StaticSettings.Config.Save();
+                }
+            }
 
+            // 提前创建 OOBE 窗口，server 就绪后注入 backendUrl
+            if (string.IsNullOrEmpty(StaticSettings.Config.GamePath) && availableVersion != null)
+            {
+                OobeBrowser = new OobeBrowser();
+                OobeBrowser.Show();
+                ServerManager.StartApp(false, (url) =>
+                {
+                    UiContext?.Post(_ => OobeBrowser?.InjectBackendUrl(url), null);
+                });
+            }
+            else if (availableVersion != null && !StaticSettings.Config.Export)
+            {
+                BrowserWin = new Browser();
+                BrowserWin.Show();
+                ServerManager.StartApp(false, (url) =>
+                {
+                    UiContext?.Post(_ => BrowserWin?.InjectBackendUrl(url), null);
+                });
+            }
+            else if (availableVersion != null && IsFromStartup)
+            {
+                // export mode + startup: show tray icon, no browser window
+                ServerManager.StartApp(true);
+                AppLifecycleManager.ShowTrayIcon();
+            }
+            else if (availableVersion != null)
+            {
+                // export mode + manual launch: show OOBE at mode select page
+                OobeBrowser = new OobeBrowser(hash: "/server");
+                OobeBrowser.Show();
+                ServerManager.StartApp(true, (url) =>
+                {
+                    UiContext?.Post(_ => OobeBrowser?.InjectBackendUrl(url), null);
+                });
+            }
+            else
+            {
+                // 这里不用 Show，可能是在托盘的
+                var launcher = new Launcher(); // prevent GC by assigning to ActiveForm
+                ActiveForm = launcher;
+            }
             Application.Run();
         }
         catch (Exception e)
@@ -172,7 +231,9 @@ public partial class AppMain : ISingleInstance
 
     public void OnInstanceInvoked(string[] args)
     {
-        _launcher.ShowWindow();
+        var url = ServerManager.IsRunning ? ServerManager.GetLoopbackUrl() : null;
+        if (url != null)
+            AppLifecycleManager.ShowBrowser(url);
     }
 
     public static void SetLocale(string locale)
@@ -196,19 +257,6 @@ public partial class AppMain : ISingleInstance
         CultureInfo.CurrentCulture = culture;
         CultureInfo.CurrentUICulture = culture;
 
-        // 保存配置文件
-        var cfgFilePath = Path.Combine(StaticSettings.appData, "config.json");
-        var json = JsonSerializer.Serialize(StaticSettings.Config, new JsonSerializerOptions { WriteIndented = true });
-        System.IO.File.WriteAllText(cfgFilePath, json);
+        StaticSettings.Config.Save();
     }
 }
-
-
-
-
-
-
-
-
-
-

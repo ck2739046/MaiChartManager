@@ -14,8 +14,8 @@ public class MusicListController(StaticSettings settings, ILogger<StaticSettings
     }
 
     [HttpPost]
-    public void ReloadAll()
+    public async Task ReloadAll()
     {
-        settings.RescanAll();
+        await settings.RescanAll();
     }
 }

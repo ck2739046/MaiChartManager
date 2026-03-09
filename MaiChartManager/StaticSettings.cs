@@ -11,6 +11,13 @@ public partial class StaticSettings
     public static readonly string tempPath = Path.Combine(Path.GetTempPath(), "MaiChartManager");
     public static readonly string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MaiChartManager");
     public static readonly string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
+#if DEBUG
+    public static readonly string wwwroot = Path.Combine(ProjectDir, "wwwroot");
+    private static string ProjectDir => Path.GetDirectoryName(GetThisFilePath())!;
+    private static string GetThisFilePath([System.Runtime.CompilerServices.CallerFilePath] string? path = null) => path!;
+#else
+    public static readonly string wwwroot = Path.Combine(exeDir, "wwwroot");
+#endif
 
     private static string _imageAssetsDir = "LocalAssets";
     private static string _movieAssetsDir = "LocalAssets";
@@ -24,20 +31,33 @@ public partial class StaticSettings
     public static string CurrentLocale { get; set; } = "zh";
 
     private readonly ILogger<StaticSettings> _logger;
+    private readonly Controllers.Mod.ModConfigService _modConfigService;
 
-    public StaticSettings(ILogger<StaticSettings> logger)
+    public StaticSettings(ILogger<StaticSettings> logger, Controllers.Mod.ModConfigService modConfigService)
     {
         _logger = logger;
-
+        _modConfigService = modConfigService;
+        if (string.IsNullOrEmpty(GamePath)) return; // OOBE mode: skip scan
         try
         {
-            if (string.IsNullOrEmpty(GamePath))
-            {
-                throw new ArgumentException(Locale.GameDirNotSpecified);
-            }
-
             GetGameVersion();
-            RescanAll();
+            RescanAll().GetAwaiter().GetResult();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "初始化数据目录时出错");
+            SentrySdk.CaptureException(e);
+            MessageBox.Show(e.Message, Locale.InitDataDirError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Application.Exit();
+        }
+    }
+
+    public async Task InitializeGameData()
+    {
+        try
+        {
+            GetGameVersion();
+            await RescanAll();
         }
         catch (Exception e)
         {
@@ -76,10 +96,19 @@ public partial class StaticSettings
         return _musicList;
     }
 
-    public void RescanAll()
+    public async Task RescanAll()
     {
+        GetGameVersion();
         StartupErrorsList.Clear();
-        UpdateAssetPathsFromAquaMaiConfig();
+        try
+        {
+            var config = await _modConfigService.GetCurrentAquaMaiConfig();
+            UpdateAssetPathsFromAquaMaiConfig(config);
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("无法获取 AquaMai 配置");
+        }
         ScanMusicList();
         ScanGenre();
         ScanVersionList();
@@ -240,7 +269,7 @@ public partial class StaticSettings
         _logger.LogInformation($"Scan MovieData, found {MovieDataMap.Count} MovieData.");
     }
 
-    private void GetGameVersion()
+    public void GetGameVersion()
     {
         try
         {
@@ -283,21 +312,8 @@ public partial class StaticSettings
         return $"A{id:000}";
     }
 
-    public static void UpdateAssetPathsFromAquaMaiConfig(IConfig? config = null)
+    public static void UpdateAssetPathsFromAquaMaiConfig(IConfig config)
     {
-        if (config == null)
-        {
-            try
-            {
-                config = Controllers.Mod.ConfigurationController.GetCurrentAquaMaiConfig();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("无法获取 AquaMai 配置");
-                return;
-            }
-        }
-
         var imageAssetsDir = config.GetEntryState("GameSystem.Assets.LoadLocalImages.ImageAssetsDir");
         // 旧版兼容
         var localAssetsDir = config.GetEntryState("GameSystem.Assets.LoadLocalImages.LocalAssetsDir");
